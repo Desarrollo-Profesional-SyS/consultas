@@ -1,0 +1,1087 @@
+<title>Rediseño Bot Manufactura y Calidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: documento de trabajo de una columna (máx. 1080px) con navegación fija; tarjetas solo para guiones de WhatsApp y nodos del flujo. */
+:root{
+  --bg:#f5f3f6; --surface:#ffffff; --ink:#1e1922; --muted:#5d5663; --line:#e1dbe4; --soft:#efeaf1;
+  --accent:#8a1d61; --accent-ink:#ffffff; --hot:#c8255f;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0a7d0a; --warn:#a86b00; --crit:#c03030;
+  --wa-out:#d9fdd3; --wa-in:#ffffff; --wa-bg:#efe7de; --wa-btn:#0b7a63;
+  --band:rgba(30,25,34,.06);
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141116; --surface:#1d1920; --ink:#f1ecf3; --muted:#b4aab8; --line:#352e39; --soft:#252028;
+  --accent:#e07ab4; --accent-ink:#1a0f17; --hot:#ff6f9c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good:#3ccf3c; --warn:#f2b230; --crit:#ff6b6b;
+  --wa-out:#005c4b; --wa-in:#202c33; --wa-bg:#0b141a; --wa-btn:#53bdeb;
+  --band:rgba(255,255,255,.06); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141116; --surface:#1d1920; --ink:#f1ecf3; --muted:#b4aab8; --line:#352e39; --soft:#252028;
+  --accent:#e07ab4; --accent-ink:#1a0f17; --hot:#ff6f9c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70;
+  --good:#3ccf3c; --warn:#f2b230; --crit:#ff6b6b;
+  --wa-out:#005c4b; --wa-in:#202c33; --wa-bg:#0b141a; --wa-btn:#53bdeb;
+  --band:rgba(255,255,255,.06); color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15.5px;line-height:1.6;margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:20px;padding-block:0 64px}
+h1,h2,h3,h4{font-family:var(--f-display);line-height:1.1;text-wrap:balance;margin:0;font-weight:600;letter-spacing:.01em}
+h1{font-size:clamp(2.3rem,5.5vw,3.6rem);font-weight:700}
+h2{font-size:clamp(1.7rem,3.6vw,2.3rem);margin-bottom:.4rem}
+h3{font-size:1.35rem;margin-bottom:.35rem}
+h4{font-size:1.1rem}
+p{margin:0 0 .8rem;max-width:72ch}
+a{color:var(--accent)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.eyebrow{font-family:var(--f-mono);font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+small,.small{font-size:.86rem}
+
+/* Encabezado */
+header.top{padding-block:40px 18px;display:grid;gap:14px}
+header.top .lede{font-size:1.12rem;color:var(--muted);max-width:66ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.88rem;color:var(--muted)}
+.meta b{color:var(--ink);font-weight:600}
+
+/* Navegación */
+nav.toc{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-20px;padding-inline:20px}
+nav.toc ol{list-style:none;display:flex;gap:4px;overflow-x:auto;margin:0;padding:8px 0;scrollbar-width:thin}
+nav.toc a{display:block;white-space:nowrap;text-decoration:none;color:var(--muted);font-size:.86rem;padding:6px 10px;border-radius:6px}
+nav.toc a:hover{background:var(--soft);color:var(--ink)}
+nav.toc .n{font-family:var(--f-mono);font-size:.75rem;margin-right:4px;color:var(--accent)}
+
+section{padding-block:44px 8px;border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+.sec-head{display:grid;gap:6px;margin-bottom:22px}
+.sec-head .eyebrow{color:var(--accent)}
+
+/* KPI */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-block:8px 26px}
+.kpi{background:var(--surface);padding:16px 16px 14px;display:grid;gap:2px;align-content:start}
+.kpi .v{font-family:var(--f-display);font-size:2.3rem;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.kpi .l{font-size:.86rem;color:var(--muted);line-height:1.35}
+.kpi.bad .v{color:var(--crit)} .kpi.ok .v{color:var(--good)}
+
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+.grid2>*{min-width:0}
+.list{margin:0;padding-left:1.2rem;display:grid;gap:6px}
+.list li{max-width:74ch}
+.list li::marker{color:var(--accent)}
+.callout{border-left:3px solid var(--accent);padding:4px 0 4px 16px;margin-block:12px 18px}
+.callout p{margin:0}
+
+/* Sinergia */
+.chain{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;counter-reset:lv;margin-block:10px 18px}
+.lever{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 12px 10px;display:grid;gap:4px;align-content:start;position:relative}
+.lever .k{font-family:var(--f-mono);font-size:.72rem;color:var(--accent);letter-spacing:.06em;text-transform:uppercase}
+.lever h4{font-size:1.08rem}
+.lever .now{font-size:.84rem;color:var(--muted);line-height:1.4}
+.lever .now b{color:var(--crit);font-weight:600}
+.lever .now b.g{color:var(--good)}
+
+/* Tablas */
+.tbl{overflow-x:auto;margin-block:8px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;font-size:.78rem;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);background:var(--soft)}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;font-family:var(--f-mono);white-space:nowrap}
+.bar{height:8px;border-radius:0 4px 4px 0;background:var(--accent);min-width:2px}
+.barcell{width:34%;min-width:120px}
+
+/* Chips */
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:.76rem;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;line-height:1.5}
+.chip.crit{color:var(--crit)} .chip.warn{color:var(--warn)} .chip.good{color:var(--good)} .chip.acc{color:var(--accent)}
+
+/* Diagnóstico */
+.finding{display:grid;gap:10px;padding-block:18px;border-top:1px dashed var(--line)}
+.finding:first-of-type{border-top:0}
+.finding>*,.sec-head>*,header.top>*,.node>*,.timeline>*,.tl>*{min-width:0}
+.finding .cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.finding .cols>*{min-width:0}
+.lab{font-family:var(--f-mono);font-size:.74rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+
+/* Gráficas */
+.chart{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 14px 8px;margin-block:8px 18px}
+.chart-title{font-weight:600;font-size:.95rem;margin-bottom:2px}
+.chart-sub{font-size:.82rem;color:var(--muted);margin-bottom:8px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.svgbox{overflow-x:auto}
+.svgbox svg{display:block;min-width:620px;width:100%;height:auto}
+svg text{fill:var(--muted);font-family:var(--f-mono);font-size:10px}
+svg .t-ink{fill:var(--ink)}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--bg);font-size:.8rem;padding:6px 9px;border-radius:6px;z-index:20;max-width:240px;line-height:1.35}
+details.data{margin-top:6px;font-size:.85rem}
+details.data summary{cursor:pointer;color:var(--muted)}
+.hbars{display:grid;gap:8px;margin-block:6px}
+.hb{display:grid;grid-template-columns:minmax(120px,240px) 1fr auto;gap:10px;align-items:center;font-size:.88rem}
+.hb .track{background:var(--soft);border-radius:0 4px 4px 0;height:18px;position:relative}
+.hb .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:0 4px 4px 0}
+.hb .fill.crit{background:var(--crit)}
+.hb .val{font-family:var(--f-mono);font-size:.82rem;min-width:7ch;text-align:right}
+@media (max-width:520px){.hb{grid-template-columns:1fr auto}.hb .track{grid-column:1/-1;order:3}}
+
+/* Flujo */
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto;margin-block:10px 20px}
+.flow pre.mermaid{margin:0;min-width:760px;background:transparent;font-family:var(--f-body)}
+
+/* Guiones WhatsApp */
+.nodes{display:grid;gap:18px}
+.node{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface)}
+@media (max-width:760px){.node{grid-template-columns:1fr}}
+.node .info{padding:16px;display:grid;gap:8px;align-content:start}
+.node .id{font-family:var(--f-mono);font-size:.75rem;color:var(--accent);letter-spacing:.05em}
+.node dl{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;margin:0;font-size:.86rem}
+.node dt{color:var(--muted);font-weight:500}
+.node dd{margin:0}
+.chat{background:var(--wa-bg);padding:14px;display:flex;flex-direction:column;gap:8px}
+.msg{max-width:92%;padding:8px 10px 6px;border-radius:8px;font-size:.88rem;line-height:1.45;white-space:pre-line;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.msg.out{align-self:flex-end;background:var(--wa-out);border-top-right-radius:2px}
+.msg.in{align-self:flex-start;background:var(--wa-in);border-top-left-radius:2px}
+.msg .who{display:block;font-size:.72rem;font-weight:600;color:var(--muted);margin-bottom:2px;white-space:normal}
+.msg .var{font-family:var(--f-mono);font-size:.8rem;color:var(--accent)}
+.btns{align-self:flex-end;display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:92%}
+.btns span{background:var(--wa-in);color:var(--wa-btn);font-size:.82rem;font-weight:600;padding:6px 12px;border-radius:8px;box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.sys{align-self:center;font-size:.74rem;background:var(--surface);color:var(--muted);padding:3px 10px;border-radius:6px;font-family:var(--f-mono)}
+
+/* Cadencia */
+.timeline{display:grid;gap:0;margin-block:10px 18px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.tl{display:grid;grid-template-columns:92px 1fr;gap:14px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.tl:last-child{border-bottom:0}
+.tl .when{font-family:var(--f-mono);font-size:.82rem;color:var(--accent);font-weight:500}
+.tl .what{min-width:0}
+.tl .what b{font-weight:600}
+
+.two-lists{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px}
+.two-lists>*{min-width:0}
+.check{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.check li{display:grid;grid-template-columns:22px 1fr;gap:8px;font-size:.92rem}
+.check li::before{content:"";width:14px;height:14px;border:2px solid var(--accent);border-radius:3px;margin-top:4px}
+
+footer{padding-block:30px 0;font-size:.85rem;color:var(--muted)}
+footer p{max-width:90ch}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+html{scroll-behavior:smooth}
+section[id]{scroll-margin-top:56px}
+</style>
+
+<div class="wrap">
+
+<header class="top">
+  <div class="eyebrow">Embudo Manufactura y Calidad · semana del 5 al 12 de octubre de 2026</div>
+  <h1>Rediseño del bot de WhatsApp</h1>
+  <p class="lede">Análisis de los 74 leads y 2,215 mensajes de la semana en el CRM, cómo se refuerzan entre sí los siete puntos que planteaste, y una primera versión del flujo nuevo para pulirla juntos.</p>
+  <div class="meta">
+    <span>Atención propuesta: <b>L–V y Dom 7:00–22:00 · Sáb 8:00–22:00</b></span>
+    <span>Zona: <b>America/Monterrey</b></span>
+    <span>Fuente: <b>CRM, solo lectura</b></span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Secciones">
+  <ol>
+    <li><a href="#resumen"><span class="n">1</span>Resumen</a></li>
+    <li><a href="#sinergia"><span class="n">2</span>Sinergia</a></li>
+    <li><a href="#diagnostico"><span class="n">3</span>Diagnóstico</a></li>
+    <li><a href="#flujo"><span class="n">4</span>Flujo nuevo</a></li>
+    <li><a href="#guiones"><span class="n">5</span>Guiones</a></li>
+    <li><a href="#horario"><span class="n">6</span>Horario y cadencia</a></li>
+    <li><a href="#asesores"><span class="n">7</span>Asesores y SLA</a></li>
+    <li><a href="#crm"><span class="n">8</span>Cambios en el CRM</a></li>
+    <li><a href="#kpis"><span class="n">9</span>Metas</a></li>
+    <li><a href="#pulir"><span class="n">10</span>Para pulir</a></li>
+  </ol>
+</nav>
+
+<!-- 1 RESUMEN -->
+<section id="resumen">
+  <div class="sec-head">
+    <div class="eyebrow">1 · Resumen</div>
+    <h2>El bot engancha, pero no cierra</h2>
+    <p>El primer mensaje funciona: 8 de cada 10 leads contestan. Lo que se pierde es lo que pasa después. El bot habla mucho y a deshoras, los asesores contestan rápido solo cuando el cliente pregunta, y las señales de compra (botones, rastreo web, "¿cuánto cuesta?") no generan una acción inmediata.</p>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><span class="v mono">74</span><span class="l">leads nuevos en el embudo</span></div>
+    <div class="kpi ok"><span class="v mono">80%</span><span class="l">respondieron al bot (59 de 74)</span></div>
+    <div class="kpi bad"><span class="v mono">2</span><span class="l">ventas: 2.7% de conversión, $6,199 MXN</span></div>
+    <div class="kpi bad"><span class="v mono">18.4</span><span class="l">mensajes del bot por lead (1,364 en total)</span></div>
+    <div class="kpi ok"><span class="v mono">2.4 min</span><span class="l">mediana de respuesta del asesor cuando el cliente pregunta en horario</span></div>
+    <div class="kpi bad"><span class="v mono">24 de 59</span><span class="l">leads que respondieron esperaron más de 1 h su primer mensaje humano o nunca lo recibieron</span></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h3>Lo que encontramos</h3>
+      <ol class="list">
+        <li><b>Envíos a deshoras y en ráfaga.</b> 213 mensajes del bot salieron fuera de 9:00–21:00, algunos a las 00:13, 01:35, 03:58 y 05:58. Además, 323 mensajes (24%) salieron entre 9:00 y 9:59, porque el seguimiento acumulado se dispara en bloque al abrir el horario.</li>
+        <li><b>El bot no escucha.</b> Ignora preguntas como "¿cuál es el costo?", "¿dan DC-3?" o "¿necesito inglés?" y contesta con el siguiente paso de su guion. Además, mandó 101 mensajes en los 30 minutos posteriores a uno de un asesor (en 32 leads).</li>
+        <li><b>Las señales calientes no detonan acción.</b> Hubo 21 leads con rastreo web, clics en "Ver métodos pago" y preguntas de precio, y ninguno se atendió con prioridad. Un lead que pulsó "Ver métodos pago" esperó 45 h a un humano y el bot lo regresó al seguimiento negativo.</li>
+        <li><b>La oferta se contradice.</b> Circulan 6 precios ($3,999 · $3,799 · $2,799 · $1,950 · $3,400 · apartado $1,000), 4 conteos de "lugares" que suben y bajan, "6" contra "9" certificaciones y "hoy cerramos" cinco días seguidos.</li>
+        <li><b>El cierre es manual y masivo.</b> 41 de 45 leads se marcaron Perdido en los 2 minutos siguientes a la última oferta (24 de ellos el domingo 11). El 93% quedó con la razón "No contestaron", así que no hay aprendizaje.</li>
+      </ol>
+    </div>
+    <div>
+      <h3>Lo que cambia</h3>
+      <ol class="list">
+        <li><b>Dos relojes distintos.</b> El bot responde al instante cuando el cliente escribe (en la noche, de forma breve), pero los seguimientos solo salen en una ventana prudente, escalonados y a la hora en que ese lead suele estar activo.</li>
+        <li><b>Árbol con oídos.</b> Avanza solo cuando recibe el nombre, contesta las preguntas frecuentes antes de seguir y se pausa en cuanto escribe un cliente o un asesor.</li>
+        <li><b>Señal caliente igual a alerta con SLA.</b> Las alertas tienen tiempo máximo de atención: 2 min para comprobantes y "lo quiero", 5 min para preguntas y perfil. Fuera de horario entran a una cola de apertura.</li>
+        <li><b>Una sola verdad comercial.</b> Un precio vigente por semana con fecha de cierre real, un solo esquema de apartado y un remitente consistente.</li>
+        <li><b>Seguimiento de 7 días con salida digna.</b> Son 6 toques con botones, y el último pregunta "¿lo dejamos para después?". Así el Perdido se marca solo y con su razón.</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="callout"><p><b>Lo que ya funciona y se conserva:</b> pedir el nombre (73% contesta en 30 min); el link personalizado al temario con rastreo; el audio del asesor con recomendación según el perfil (presente en las 2 ventas); el apartado de $1,000 con botón "LO QUIERO!" (convirtió a un lead frío al día 3); las pruebas de confianza (muestra de DC-3, verificador STPS, egresados) y el onboarding automático de Ganado.</p></div>
+</section>
+
+<!-- 2 SINERGIA -->
+<section id="sinergia">
+  <div class="sec-head">
+    <div class="eyebrow">2 · Cómo hacen sinergia</div>
+    <h2>Siete palancas, un solo multiplicador</h2>
+    <p>Los siete puntos no son mejoras independientes: son eslabones de una cadena que se multiplica. Un mensaje enviado a buena hora se lee; si se lee y trae una pregunta clara, se responde; si alguien atiende esa respuesta a tiempo, avanza; y si la oferta es coherente y pagar es fácil, se cierra. Si un eslabón falla, los demás pierden efecto, por bien hechos que estén.</p>
+  </div>
+
+  <div class="chain">
+    <div class="lever"><span class="k">1 · Prudencia</span><h4>Mensaje a buena hora</h4><span class="now">Alimenta la lectura. Esta semana la lectura cayó de <b>70%</b> en el saludo a <b>40%</b> en la oferta y <b>28%</b> en el día 4.</span></div>
+    <div class="lever"><span class="k">4 · Llamado a la acción</span><h4>Pregunta fácil de contestar</h4><span class="now">Convierte la lectura en respuesta. El nombre logró <b class="g">73%</b> y el área <b class="g">39%</b>, contra <b>4%</b> de la oferta relámpago.</span></div>
+    <div class="lever"><span class="k">3 · Árbol</span><h4>Ruta según la respuesta</h4><span class="now">Lleva a cada quien a su siguiente paso. Hoy se hicieron <b>54</b> movimientos manuales y el bot escribió <b>101</b> veces encima del asesor.</span></div>
+    <div class="lever"><span class="k">2 · Agilidad</span><h4>Humano a tiempo</h4><span class="now">Mantiene el interés. La mediana fue de <b class="g">2.4 min</b> cuando el cliente pregunta, pero <b>41%</b> esperó más de 1 h su primer mensaje humano o nunca lo recibió.</span></div>
+    <div class="lever"><span class="k">5 · Persuasión</span><h4>Confianza y empatía</h4><span class="now">Baja la resistencia. Hoy circulan <b>6 precios</b>, <b>4 conteos</b> de lugares y "Inge" para todos.</span></div>
+    <div class="lever"><span class="k">6 · Fluidez</span><h4>Pagar sin fricción</h4><span class="now">Hace que el "sí" se convierta en pago. <b>9</b> leads recibieron datos o link de pago y <b>2</b> pagaron; el resto casi no tuvo seguimiento.</span></div>
+    <div class="lever"><span class="k">7 · Aprendizaje</span><h4>Medir y volver al anuncio</h4><span class="now">Cierra el ciclo. El <b>93%</b> de los perdidos dice "No contestaron" y las UTM están duplicadas.</span></div>
+  </div>
+
+  <div class="grid2">
+    <div>
+      <h3>La cadena de esta semana</h3>
+      <div class="hbars" id="funnel"></div>
+      <p class="small muted">Cada tramo incluye solo a los leads del tramo anterior. Las tasas se multiplican: 80% × 27% × 56% × 22% ≈ 2.7%.</p>
+    </div>
+    <div>
+      <h3>Por qué importa mejorar todos a la vez</h3>
+      <p>El escenario es ilustrativo y usa los mismos 74 leads: si cada tramo mejora entre 5 y 13 puntos, por ejemplo 85% responde, 40% de ellos recibe las opciones de pago, 65% de esos recibe datos o link y 35% paga, el resultado es 74 × 0.85 × 0.40 × 0.65 × 0.35 ≈ <b>6 ventas</b> en lugar de 2.</p>
+      <p>Ningún tramo por sí solo triplica las ventas, pero los cuatro juntos sí. Por eso el rediseño toca horario, árbol, asesores y oferta al mismo tiempo, y no solo los textos del bot.</p>
+      <p class="small muted">Cada palanca también protege a las demás. Menos mensajes a deshoras significa menos bajas y bloqueos: esta semana un lead se dio de baja del marketing y Meta frenó la entrega a otro. Eso cuida la reputación del número, y una buena reputación permite que las plantillas de seguimiento lleguen.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3 DIAGNOSTICO -->
+<section id="diagnostico">
+  <div class="sec-head">
+    <div class="eyebrow">3 · Diagnóstico por punto</div>
+    <h2>Qué pasó en cada uno de los siete puntos</h2>
+    <p>Los números salen de los 74 leads que entraron al embudo del 5 al 12 de octubre (hora de Monterrey), con su conversación completa hasta el 13 de octubre. Los leads se citan por su número en el CRM.</p>
+  </div>
+
+  <div class="finding" id="d1">
+    <h3>1 · Prudencia en la hora de envío</h3>
+    <div class="chart">
+      <div class="chart-title">Mensajes por hora del día, según quién escribe</div>
+      <div class="chart-sub">Toda la semana. La franja gris es el horario sin atención propuesto (22:00–7:00). Cada fila tiene su propia escala; pasa el cursor sobre las barras para ver los valores.</div>
+      <div class="svgbox" id="hours"></div>
+      <details class="data"><summary>Ver tabla de datos</summary><div class="tbl" id="hours-table"></div></details>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="lab">Lo que vimos</div>
+        <ul class="list">
+          <li>Solo la etapa Negativo respeta horario (9:00–21:00). Saludo, Informes, Lista de cursos, Llamadita, MSI y Transferencias envían a cualquier hora. Por ejemplo, #1183 recibió los recordatorios de transferencia a las 03:58 y 05:58, y #1133 el bloque completo a las 00:43.</li>
+          <li>El seguimiento acumulado durante la noche sale de golpe a las 9:00. Ese bloque concentró 267 mensajes del Negativo; el sábado 10, 64 mensajes salieron entre 9:00 y 9:02. Se ve robótico y además provoca una ola de respuestas justo cuando el equipo arranca.</li>
+          <li>El saludo dice "¡Hola excelente día!" a las 23:38 y a la 01:05.</li>
+          <li>Hubo plantillas manuales en bloque el domingo 11: 22 envíos a 22 leads en 6 minutos, entre 08:52 y 08:58.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="lab">Qué cambia</div>
+        <ul class="list">
+          <li>Dos tipos de envío: <b>reactivo</b>, cuando el cliente escribe en los últimos 15 min, sale en cualquier momento pero de noche son 2 mensajes como máximo; <b>proactivo</b>, que son seguimientos y ofertas, solo sale dentro de la ventana prudente (sección 6).</li>
+          <li>Los envíos se reparten de forma escalonada entre 9:00 y 10:30 por prioridad, nunca en bloque a las 9:00:00.</li>
+          <li>El saludo usa la hora del día ("buenos días", "buenas tardes" o "buenas noches").</li>
+          <li>Los clientes escriben más a las 11–12 h y a las 18 h. Los toques proactivos se programan en esas franjas o a la hora en que ese lead escribió.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding" id="d2">
+    <h3>2 · Agilidad de respuesta de los asesores</h3>
+    <div class="grid2">
+      <div class="chart">
+        <div class="chart-title">Tiempo hasta la respuesta humana cuando el cliente escribe</div>
+        <div class="chart-sub">194 bloques de mensajes del cliente que sí recibieron respuesta de un asesor (excluye el primer mensaje del anuncio).</div>
+        <div class="hbars" id="resp"></div>
+      </div>
+      <div class="chart">
+        <div class="chart-title">Primer mensaje humano después de que el lead respondió</div>
+        <div class="chart-sub">59 leads que escribieron algo más que el mensaje del anuncio.</div>
+        <div class="hbars" id="first"></div>
+      </div>
+    </div>
+    <div class="cols">
+      <div>
+        <div class="lab">Lo que vimos</div>
+        <ul class="list">
+          <li>Cuando el cliente <b>pregunta</b> en horario, el equipo es rápido: 81% de las respuestas tardan 15 min o menos. Las 24 que tardaron más de 4 h son casi todas leads que solo dieron su nombre y recibieron una plantilla días después; entre ellas está un clic en "Ver métodos pago" (#957, 45 h).</li>
+          <li>Cuando el cliente <b>solo da su nombre</b>, nadie lo contacta. En 19 leads el primer mensaje humano llegó de 27 a 109 h después y fue una plantilla masiva (de "últimos lugares" o de seguimiento genérico), no un mensaje personal. Algunos casos son #377, #397, #465 y #546.</li>
+          <li>Hubo preguntas directas sin respuesta humana: #927 ("¿cuál es el costo??") y #641 ("información sobre los cursos y los costos"); a #1587 ("¿te dan certificación DC-3?, ¿qué contiene el paquete?") nunca le respondió un humano.</li>
+          <li>Después de mandar los datos de pago casi no hay seguimiento: #688 esperó 26 h, #920 46 h, #993 48 h, y #1066 y #1183 quedaron con un plan elegido sin que nadie los contactara. Tampoco hay registro de la llamada prometida a las 9:00 a #1063 ni de la llamada aceptada por #582.</li>
+          <li>De noche, el paso de Saludo a Informes depende de que un asesor mueva el lead a mano: #501 esperó 7 h 43 min, #1253 7 h 41 min y #957 7 h 28 min.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="lab">Qué cambia</div>
+        <ul class="list">
+          <li>Tabla de SLA por señal (sección 7), con alerta, tarea automática y escalamiento si se vence.</li>
+          <li>Cuando el cliente responde su perfil, la respuesta humana es obligatoria en 5 min o menos, y el audio con la recomendación debe llegar en 10 min o menos.</li>
+          <li>Los mensajes que llegan fuera de horario entran a una cola de apertura que se atiende en los primeros 30 min del turno, ordenada por temperatura.</li>
+          <li>Cada lead tiene un dueño. Hoy 24 leads tuvieron de 2 a 4 asesores escribiendo, y #361 tuvo 4.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding" id="d3">
+    <h3>3 · Árbol de decisión y condicionales</h3>
+    <div class="cols">
+      <div>
+        <div class="lab">Cómo funciona hoy</div>
+        <ul class="list">
+          <li>Es lineal y basado en temporizadores. Solo hay tres ramas reales:
+            <ul class="list">
+              <li>Si el lead da su nombre, el bot se detiene y espera a un asesor.</li>
+              <li>Si contesta la oferta relámpago, pasa a facilidades de pago.</li>
+              <li>Si no contesta, sigue el Negativo.</li>
+            </ul>
+          </li>
+          <li><b>detenerAlResponder</b> está apagado en todas las etapas, así que el bot sigue su guion aunque el cliente o el asesor estén conversando. Por ejemplo, #993 pasó a Negativo 27 min después de recibir su plan de pagos, y #1406 recibió "antes de que tomes una decisión…" 3 min después de que la asesora le preguntó si iniciaba la inscripción.</li>
+          <li>Las etapas 1.3, 1.4, 2.x y 3.x regresan al Negativo a las 4 h. Es decir, un lead que eligió forma de pago vuelve a recibir "antes de que tomes una decisión" y la oferta relámpago (#957, #1063).</li>
+          <li>Hay bucles: #957 recibió el mismo bloque a las 9:00 y a las 17:43 y la oferta "solo por hoy" el sábado y el domingo; #289 recibió dos veces el bloque 1.2; #1391 repitió el bloque Negativo.</li>
+          <li>El Negativo dura casi 5 días, pero 43 leads se mandaron a Perdido a mano antes de que terminara (21 de ellos en el paso 29 de 40).</li>
+        </ul>
+      </div>
+      <div>
+        <div class="lab">Qué cambia</div>
+        <ul class="list">
+          <li>Las ramas se definen por <b>lo que dice o pulsa</b> el cliente (nombre, pregunta, perfil, botón) y no solo por el paso del tiempo.</li>
+          <li>Cualquier mensaje del cliente o del asesor pausa la secuencia y reinicia los temporizadores.</li>
+          <li>Se crea una etapa <b>"Esperando pago"</b> con sus propios recordatorios. Quien ya eligió plan nunca regresa al seguimiento genérico.</li>
+          <li>Hay un contador de rondas (como el campo "Paso del negativo") que impide repetir bloques.</li>
+          <li>El Perdido se marca automáticamente al final del seguimiento, con la razón que el cliente eligió en el botón.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding" id="d4">
+    <h3>4 · Llamados a la acción: qué mensajes generan respuesta</h3>
+    <div class="tbl" id="steps-table"></div>
+    <p class="small muted">"Respuesta directa" significa que el cliente escribió después de ese mensaje sin que hubiera otro mensaje saliente entre ambos (en las 6 h siguientes). El porcentaje de lectura depende de que el cliente tenga activadas las confirmaciones de lectura, así que es un piso.</p>
+    <div class="cols">
+      <div>
+        <div class="lab">Lo que vimos</div>
+        <ul class="list">
+          <li>Las preguntas sencillas y personales funcionan:
+            <ul class="list">
+              <li>Nombre: 73%.</li>
+              <li>"¿Cuál de estos 3 te interesa?": 5 de 7.</li>
+              <li>Área: 39%.</li>
+              <li>Llamadita: 36%.</li>
+            </ul>
+          </li>
+          <li>Los mensajes que solo informan (audio genérico, imagen, egresados, 64 certificaciones) casi no reciben respuesta: de 0% a 7%.</li>
+          <li>Los botones casi no se usan. Hay 9 etiquetas distintas ("LO QUIERO AHORA", "Reservar mi lugar", "Quiero Reservar", entre otras) y solo hubo 4 clics: 2 en "Ver métodos pago", 1 en "LO QUIERO!" (que terminó en venta) y 1 en "NO MAS INFO".</li>
+          <li>Los asesores suelen cerrar sin pedir el siguiente paso: "quedo atenta", "¿va?", "Para servirte".</li>
+        </ul>
+      </div>
+      <div>
+        <div class="lab">Qué cambia</div>
+        <ul class="list">
+          <li>Cada mensaje termina en <b>una sola pregunta</b> y, siempre que se pueda, con 2 o 3 botones de respuesta rápida.</li>
+          <li>Se usa un juego estable de botones: [Ver pagos] [Tengo una duda] [Llamada de 5 min] [Ahora no]. Así el clic también clasifica al lead.</li>
+          <li>El asesor cierra con una pregunta de dos opciones, como en la venta de #363: "¿Te muestro cómo quedaría tu pago o prefieres que te marque 5 minutos?".</li>
+          <li>Se pide el correo junto con los datos de pago ("¿a qué correo activo tu acceso?"). Eso crea compromiso y adelanta el alta.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding" id="d5">
+    <h3>5 · Persuasión, empatía y servicio</h3>
+    <div class="cols">
+      <div>
+        <div class="lab">Lo que resta confianza</div>
+        <ul class="list">
+          <li><b>Precios:</b> lista $3,999 ("ya con descuento"); relámpago $3,799; última oportunidad $2,799; Transferencias $1,950 ("hoy"); estudiante $3,400, que queda más caro que la promo. Los leads más calientes recibieron precio completo (#688 MSI por $3,999; #993 $3,999 en pagos) mientras a los fríos se les ofrecía $2,799. Eso enseña que esperar sale más barato.</li>
+          <li><b>Escasez:</b> "primeras 3 personas", luego "4 lugares", "2 lugares" y "1 último lugar". El mismo lead (#267) recibió "2 lugares" el jueves, "4" el viernes y "2" el domingo. "La cerramos hoy" se repitió de viernes a martes.</li>
+          <li><b>Producto:</b> "6 certificaciones" en Informes contra "tu ruta que son 9 certificaciones" en el Negativo (unos 55 envíos); "membresía premium con 50 certificaciones más" a quien ya había elegido plan; acceso de 12 meses o "6 meses" (#1183).</li>
+          <li><b>Anuncio contra precio:</b> el anuncio promete "50% Descuento DC-3", pero la primera tarjeta muestra $3,999 "antes $4,199" (5%). #382 mandó captura del anuncio preguntando por el 50% y recibió dos precios distintos.</li>
+          <li><b>Identidad:</b> el bot firma "Salma Pérez" y contestan cuatro personas distintas. "Inge" aparece incluso con el nombre ya conocido y con mujeres y estudiantes.</li>
+          <li><b>Datos:</b> en #993 se pegó por error el nombre, teléfono y correo de otra persona. Además, la cuenta para transferir está a nombre de una persona física y dice "sin factura"; #1406 preguntó por una garantía.</li>
+        </ul>
+      </div>
+      <div>
+        <div class="lab">Lo que genera confianza (y se estandariza)</div>
+        <ul class="list">
+          <li>Pedir permiso antes del audio ("¿te parece bien?") y recomendar según el área o la meta del lead: 8D y SPC para técnicos, ISO 19011 para auditores, CV y entrevista para estudiantes.</li>
+          <li>Pruebas verificables: muestra de DC-3, buscador de la STPS, bitácora de egresados, "las DC-3 no caducan".</li>
+          <li>Desglose con fechas y la promesa "en menos de 10 minutos tienes tus accesos".</li>
+          <li>Pactar fecha de contacto y dejar nota ("compra mañana 10", #361).</li>
+          <li>El motivo dominante de los leads es <b>crecer de puesto</b> ("pasar a ingeniería", "a procesos", "a proyectos"). Los mensajes deben hablar de ese ascenso y no solo del número de cursos.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding" id="d6">
+    <h3>6 · Fluidez del proceso</h3>
+    <div class="cols">
+      <div>
+        <div class="lab">Lo que vimos</div>
+        <ul class="list">
+          <li>Por cada mensaje del cliente salieron 5.6 mensajes de SyS (1,810 contra 321). El bloque inicial manda de 6 a 7 mensajes en 2 o 3 minutos.</li>
+          <li>Al menos ocho leads leyeron todo hasta el final sin responder. #594 se dio de baja del marketing ("has chosen to stop receiving marketing messages"). A #625 Meta le frenó la entrega ("to maintain healthy ecosystem engagement") y se etiquetó como "nos bloqueó".</li>
+          <li>Siete mensajes fallaron por la ventana de 24 h (#289, #1171) porque eran texto libre y no plantilla.</li>
+          <li>Hay pasos sueltos que dependen de un humano: mover de etapa, mandar el link de MSI que el cliente pidió (#920) o volver a preguntar la opción de pago ya elegida (#924).</li>
+        </ul>
+      </div>
+      <div>
+        <div class="lab">Qué cambia</div>
+        <ul class="list">
+          <li>El bloque de informes baja a 2 mensajes, con el precio en texto y una sola pregunta.</li>
+          <li>Meta: 12 mensajes del bot o menos por lead en toda su vida, y ningún toque después de 2 seguimientos leídos sin respuesta salvo el cierre amable.</li>
+          <li>Todo envío que salga 24 h o más después del último mensaje del cliente es una plantilla aprobada.</li>
+          <li>Link de pago con monto exacto y el mismo esquema de apartado para todos. Se evalúa una cuenta empresarial con opción de factura.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="finding" id="d7">
+    <h3>7 · Puntos adicionales que vale la pena considerar</h3>
+    <ul class="list">
+      <li><b>Rastreo web sin uso.</b> Hubo 21 leads con notas como "Acaba de abrir su ruta" o "Estuvo X segundos…". Ninguno compró. Solo 2 leads tienen la etiqueta Destacado y ninguno de los dos tenía nota de rastreo. La primera nota sale casi siempre a los 40 s, así que es un umbral fijo; las que de verdad informan son las de 60 s o más, 50% de la página o más, "verificó el aval STPS" o "volvió a abrir" (#920, #375, #1583).</li>
+      <li><b>Segmento estudiantes.</b> Hubo al menos 10 estudiantes o recién egresados (#326, #363, #543, #555, #596, #603, #1066, #1171, #1183, #1216). Solo 2 recibieron precio de estudiante, y uno compró en 38 min. Merece su propia rama.</li>
+      <li><b>Interés en otra ruta.</b> #267 preguntó por Core Tools, #361 por Lean y #375 por ISO. El bot les mandó Manufactura de todos modos. El primer mensaje del cliente debe leerse.</li>
+      <li><b>Certificación internacional.</b> Se perdió #1461 porque recibió dos respuestas contradictorias ("nacional" y luego "internacional"). Hace falta una respuesta oficial única.</li>
+      <li><b>Cierres masivos.</b> 24 Perdidos se marcaron el domingo 11, varios en el mismo minuto de la plantilla, y luego llegaron respuestas: #420 mandó un audio que nadie escuchó. Si un lead en Perdido responde, debe saltar una alerta.</li>
+      <li><b>UTM duplicadas.</b> "Reglas de Valor" y "Reglas de valor", "GREEN BELT" y "Green Belt". Hay que normalizarlas para comparar campañas. Las 2 ventas vinieron de "Reglas de valor".</li>
+      <li><b>Texto del anuncio.</b> "Impulsá tu carrera" usa voseo argentino (8 leads) y "Diplomado", mientras el bot habla de "ruta" y "membresía". Conviene alinear términos.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 4 FLUJO -->
+<section id="flujo">
+  <div class="sec-head">
+    <div class="eyebrow">4 · Flujo nuevo propuesto</div>
+    <h2>Árbol de decisión v1</h2>
+    <p>Las etapas siguen el recorrido del cliente. El bot avanza cuando el cliente responde y se pausa cuando hay un humano. Las líneas punteadas son alertas al asesor con su tiempo máximo de atención.</p>
+  </div>
+  <div class="flow">
+<pre class="mermaid">
+flowchart TD
+  A(["Lead entra desde el anuncio"]) --> H{"¿Dentro del horario de atención?<br/>L-V y Dom 7-22 · Sáb 8-22"}
+  H -->|"Sí"| S1["N1 Bienvenida<br/>saludo según la hora + pide nombre"]
+  H -->|"No"| SN["N1b Bienvenida nocturna<br/>breve + un asesor te escribe mañana"]
+  SN --> INF
+  SN -.->|"cola de apertura"| COLA[("Cola 7:00 / Sáb 8:00<br/>ordenada por temperatura")]
+  S1 --> R1{"¿Qué contesta?<br/>espera 20 min"}
+  R1 -->|"Su nombre"| INF
+  R1 -->|"Una pregunta: costo, DC-3,<br/>modalidad, requisitos, otra ruta"| FAQ["N2 Respuesta FAQ inmediata"]
+  R1 -->|"Nada"| INF
+  FAQ --> INF
+  FAQ -.->|"alerta · 5 min"| AS
+  INF["N3 Informes<br/>precio en texto + tarjeta + temario<br/>+ pregunta de perfil con botones"] --> R2{"Perfil"}
+  R2 -->|"Trabajo en la industria"| AS
+  R2 -->|"Soy estudiante"| EST["N4 Rama estudiante<br/>precio con credencial"]
+  R2 -->|"Es para mi empresa"| EMP["Eje Empresas<br/>¿para cuántas personas?"]
+  R2 -->|"Sin respuesta 2 h"| NUR
+  EST --> AS
+  AS["N5 Asesor en vivo · bot en pausa<br/>audio + 2-3 cursos + pregunta de cierre"] --> R3{"Botón"}
+  R3 -->|"Ver pagos"| PAG
+  R3 -->|"Llamada de 5 min"| LL["Llamada en 15 min o menos<br/>o agendada con tarea"]
+  R3 -->|"Silencio 4 h"| NUR
+  LL --> PAG
+  PAG["N6 Facilidades<br/>Pago único · Apartado $1,000 · MSI"] --> MED["N7 Medio de pago<br/>+ ¿a qué correo activo tu acceso?"]
+  MED --> R4{"¿Envía comprobante?"}
+  R4 -->|"Sí"| GAN(["N9 Ganado<br/>onboarding D1 · D7 · D30"])
+  R4 -->|"Mañana pago"| TAR["Tarea a la hora prometida"]
+  R4 -->|"Silencio"| ESP["N8 Esperando pago<br/>45 min · mañana 10:30 · D3"]
+  TAR --> R4
+  ESP --> R4
+  ESP -->|"Sin pago al D3"| NUR
+  NUR["N10 Seguimiento 7 días<br/>6 toques en ventana prudente"] --> R5{"Respuesta"}
+  R5 -->|"Responde o pulsa compra"| AS
+  R5 -->|"Más adelante"| REA["N11 Reactivación D+30"]
+  R5 -->|"No me interesa"| PER(["Perdido · No le interesa<br/>+ baja de marketing"])
+  R5 -->|"Silencio al D7"| PER2(["Perdido · No contestaron<br/>reactivación D+45"])
+</pre>
+  </div>
+
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Regla global</th><th>Detalle</th><th>Corrige</th></tr></thead>
+      <tbody>
+        <tr><td>Pausa por conversación</td><td>Si el cliente o un asesor escribe, la secuencia activa se pausa y su temporizador se reinicia. Se reanuda 4 h después del último mensaje del cliente, en la siguiente ventana prudente.</td><td>101 mensajes del bot encima del asesor</td></tr>
+        <tr><td>Avance automático</td><td>El nombre, el perfil o un botón mueven de etapa sin intervención manual.</td><td>54 movimientos manuales; esperas de 7 h de noche</td></tr>
+        <tr><td>Primero contestar</td><td>Si el mensaje trae una pregunta (signo "?" o palabras clave), el bot responde con la FAQ antes de seguir y alerta al asesor.</td><td>#927, #641, #1587, #326, #555</td></tr>
+        <tr><td>Sin regreso al Negativo</td><td>Quien eligió forma o medio de pago pasa a "Esperando pago", nunca al seguimiento genérico.</td><td>#957, #1063, #993, #688</td></tr>
+        <tr><td>Una ronda, una vez</td><td>Un contador por lead impide repetir bloques o la misma oferta.</td><td>#957, #289, #1391</td></tr>
+        <tr><td>Señal caliente</td><td>Alerta inmediata, etiqueta Destacado automática y tarea con SLA (sección 7).</td><td>21 leads con rastreo sin acción</td></tr>
+        <tr><td>Baja respetada</td><td>"No me interesa", "NO MAS INFO" o un error de baja de Meta detienen todo envío de marketing a ese número en cualquier embudo.</td><td>#594, #491, #625</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 5 GUIONES -->
+<section id="guiones">
+  <div class="sec-head">
+    <div class="eyebrow">5 · Guiones por nodo</div>
+    <h2>Mensajes con empatía y una sola pregunta</h2>
+    <p>Son una primera redacción para pulir. Las <span class="mono" style="color:var(--accent)">{variables}</span> las llena el CRM. Los precios y fechas están marcados como <b>por definir</b> hasta que se acuerde la escalera de precios (sección 10).</p>
+  </div>
+
+  <div class="nodes">
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N1 · BIENVENIDA (EN HORARIO)</span>
+        <h3>Saludo según la hora y pedir el nombre</h3>
+        <dl>
+          <dt>Cuándo</dt><dd>Al entrar el lead, en el horario de atención.</dd>
+          <dt>Espera</dt><dd>20 min.</dd>
+          <dt>Si responde</dt><dd>Con su nombre: guarda {nombre} y pasa a N3. Con una pregunta: pasa a N2.</dd>
+          <dt>Si no</dt><dd>Usa el nombre de perfil si parece un nombre real; si no, "Inge". Pasa a N3.</dd>
+        </dl>
+        <p class="small muted">Se conserva la pregunta del nombre (73% contesta). Sale "Salma Pérez" y se presenta un asistente con el asesor real asignado.</p>
+      </div>
+      <div class="chat">
+        <div class="msg in"><span class="who">Cliente · texto del anuncio</span>Costos de programas Diplomado Manufactura y Calidad</div>
+        <div class="msg out"><span class="who">Bot SyS</span>¡<span class="var">{saludo}</span>! 👋 Gracias por escribir a *SyS*.
+Con gusto te comparto los costos de *Manufactura y Calidad*. Te va a atender <span class="var">{asesor}</span>.
+
+Para darte la información a tu medida, ¿me compartes tu nombre? 🙌</div>
+        <div class="sys">{saludo} = Buenos días (7–12) · Buenas tardes (12–19) · Buenas noches (19–7)</div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N1b · BIENVENIDA NOCTURNA</span>
+        <h3>Responder sin invadir</h3>
+        <dl>
+          <dt>Cuándo</dt><dd>De 22:00 a 7:00 (sábado hasta las 8:00).</dd>
+          <dt>Máximo</dt><dd>2 mensajes y la tarjeta de precio si el cliente sigue escribiendo.</dd>
+          <dt>Después</dt><dd>Entra a la cola de apertura, sin seguimientos automáticos hasta la ventana de la mañana.</dd>
+        </dl>
+        <p class="small muted">15 leads entraron entre las 21:00 y las 7:00. Hoy reciben el bloque completo de madrugada o esperan 7 h a que alguien los mueva.</p>
+      </div>
+      <div class="chat">
+        <div class="msg in"><span class="who">Cliente · 23:38</span>Costos de programas Diplomado Manufactura y Calidad</div>
+        <div class="msg out"><span class="who">Bot SyS</span>¡Buenas noches! 🌙 Gracias por escribir a *SyS*.
+Te dejo los costos para que los revises con calma, y mañana a partir de las <span class="var">{7:00 | 8:00 sáb}</span> <span class="var">{asesor}</span> te escribe para resolver tus dudas.
+
+¿Me compartes tu nombre para dejarte atendido? 🙌</div>
+        <div class="msg in"><span class="who">Cliente</span>Carlos</div>
+        <div class="msg out"><span class="who">Bot SyS</span>Gracias, Carlos 😊 Aquí está tu programa: tarjeta con precio + temario 👇
+<span class="var">{link_temario}</span>
+
+Descansa, mañana te escribimos.</div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N2 · RESPUESTA FAQ</span>
+        <h3>Contestar lo que preguntaron, antes de seguir</h3>
+        <dl>
+          <dt>Detecta</dt><dd>"?" o palabras clave: costo, precio, cuánto, DC-3, certific, STPS, línea, presencial, horario, duración, requisitos, inglés, gratis, factura, empresa, Lean, Core Tools, ISO.</dd>
+          <dt>Luego</dt><dd>Pasa a N3 y alerta al asesor (SLA 5 min).</dd>
+        </dl>
+        <p class="small muted">Las respuestas son cortas y verificables. La de certificación internacional queda pendiente de definir oficialmente (#1461).</p>
+      </div>
+      <div class="chat">
+        <div class="msg out"><span class="who">Costo</span>La ruta completa cuesta *<span class="var">{precio_vigente}</span> MXN* y puedes pagarla hasta en 12 meses sin intereses. Al inscribirte desbloqueas los 64 cursos de la membresía por 12 meses.</div>
+        <div class="msg out"><span class="who">DC-3 y validez</span>Sí 🙌 Cada certificación incluye *constancia DC-3 registrada ante la STPS*, que puedes verificar, y diploma de SyS con aval de CSSC y Certiprof. Las DC-3 no caducan.</div>
+        <div class="msg out"><span class="who">Modalidad</span>Es *100% en línea y a tu ritmo*: entras cuando quieras desde el celular o la compu, y cada curso tiene un grupo de apoyo para dudas.</div>
+        <div class="msg out"><span class="who">Requisitos</span>No necesitas ser egresado ni dominar inglés. Puedes empezar desde estudiante.</div>
+        <div class="msg out"><span class="who">Otra ruta</span>¡Claro! Con tu inscripción también tienes <span class="var">{ruta_mencionada}</span>, porque la membresía incluye las 6 rutas. Te paso las dos 👇</div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N3 · INFORMES + PERFIL</span>
+        <h3>De 6 o 7 mensajes a 2, con el precio en texto</h3>
+        <dl>
+          <dt>Mensaje 1</dt><dd>Tarjeta de la ruta con el precio que coincide con la promesa del anuncio.</dd>
+          <dt>Mensaje 2</dt><dd>Temario y pregunta de perfil con botones.</dd>
+          <dt>Espera</dt><dd>2 h dentro de la ventana; si no, pasa a N10.</dd>
+        </dl>
+        <p class="small muted">63 de 74 leads entraron con el texto "Costos de programas…" y el precio solo iba en una imagen.</p>
+      </div>
+      <div class="chat">
+        <div class="msg out"><span class="who">Bot SyS · imagen de la ruta</span>Mucho gusto, <span class="var">{nombre}</span> 🙌 Este es tu programa:
+
+✅ *6 certificaciones* · 144 h · 100% en línea
+✅ Por cada una, *DC-3 ante la STPS* + diploma
+💰 *<span class="var">{precio_vigente}</span> MXN* (precio regular $3,999) · hasta 12 MSI
+🎁 Al inscribirte desbloqueas *los 64 cursos* por 12 meses</div>
+        <div class="msg out"><span class="who">Bot SyS</span>Aquí ves el temario de cada certificación 👇
+<span class="var">{link_temario}</span>
+
+Para recomendarte por dónde empezar, ¿a qué te dedicas hoy?</div>
+        <div class="btns"><span>Trabajo en la industria</span><span>Soy estudiante</span><span>Es para mi empresa</span></div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N4 · RAMAS POR PERFIL</span>
+        <h3>Industria, estudiante, empresa</h3>
+        <dl>
+          <dt>Industria</dt><dd>Pasa a N5 (asesor) con SLA de 5 min.</dd>
+          <dt>Estudiante</dt><dd>Precio con credencial o kárdex y gancho de CV y prácticas, luego N5.</dd>
+          <dt>Empresa</dt><dd>Se asigna al eje Empresas; preguntar número de personas y si requiere factura.</dd>
+        </dl>
+      </div>
+      <div class="chat">
+        <div class="msg in"><span class="who">Cliente</span>Soy estudiante</div>
+        <div class="msg out"><span class="who">Bot SyS</span>¡Qué buen momento para certificarte, <span class="var">{nombre}</span>! 🎓 Lean y Six Sigma son de lo que más piden las empresas desde las prácticas.
+
+Para estudiantes tenemos precio especial con credencial o kárdex: *<span class="var">{precio_estudiante}</span>*. ¿Te muestro cómo quedaría tu pago?</div>
+        <div class="btns"><span>Ver pagos</span><span>Tengo una duda</span></div>
+        <div class="msg in"><span class="who">Cliente</span>Es para mi empresa</div>
+        <div class="msg out"><span class="who">Bot SyS</span>¡Excelente! Para equipos tenemos condiciones especiales y factura. ¿Para cuántas personas sería? Te contacta nuestra área de Empresas.</div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N5 · ASESOR EN VIVO · GUION ORO</span>
+        <h3>El guion de la venta en 38 minutos (#363)</h3>
+        <dl>
+          <dt>1</dt><dd>Reconocer el perfil y pedir permiso para el audio.</dd>
+          <dt>2</dt><dd>Audio de 60 a 90 s hablando de su área y su meta de puesto.</dd>
+          <dt>3</dt><dd>2 o 3 cursos recomendados que <b>no</b> estén ya en su ruta.</dd>
+          <dt>4</dt><dd>Prueba: muestra de DC-3 + verificador STPS.</dd>
+          <dt>5</dt><dd>Pregunta de cierre con dos opciones.</dd>
+        </dl>
+        <p class="small muted">El bot queda en pausa mientras el asesor conversa. Si hay 4 h de silencio, el lead entra a N10 en el toque 1.</p>
+      </div>
+      <div class="chat">
+        <div class="msg in"><span class="who">Cliente</span>Supervisora de calidad en una automotriz</div>
+        <div class="msg out"><span class="who"><span class="var">{asesor}</span></span>¡Excelente, <span class="var">{nombre}</span>! Como supervisora de calidad, esta ruta te prepara para dar el salto a ingeniería de calidad 💪
+
+¿Te mando un audio de 1 minuto con mi recomendación? 🎧</div>
+        <div class="msg in"><span class="who">Cliente</span>Sí, por favor</div>
+        <div class="msg out"><span class="who"><span class="var">{asesor}</span></span>🎤 1:14 · audio personalizado</div>
+        <div class="msg out"><span class="who"><span class="var">{asesor}</span></span>Además de tus 6, te recomiendo *SPC* y *8D* 👇 <span class="var">{links}</span>
+Y así se ve la DC-3 que recibes, verificable en la STPS 👇</div>
+        <div class="msg out"><span class="who"><span class="var">{asesor}</span></span>¿Te muestro cómo quedaría tu pago o prefieres que te marque 5 minutos?</div>
+        <div class="btns"><span>Ver pagos</span><span>Llamada de 5 min</span></div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N6 · FACILIDADES</span>
+        <h3>Tres opciones, un solo esquema</h3>
+        <dl>
+          <dt>Pago único</dt><dd><span class="mono">{precio_vigente}</span>.</dd>
+          <dt>Apartado</dt><dd>$1,000 hoy y el resto en 2 pagos con fechas automáticas (hoy + 10 y + 20 días, por definir).</dd>
+          <dt>MSI</dt><dd>Link de Stripe con el monto exacto e imagen de ejemplo.</dd>
+        </dl>
+        <p class="small muted">Hoy conviven pagos semanales, quincenales, "liquidar en 15 días" y "3 parcialidades". Se elige uno.</p>
+      </div>
+      <div class="chat">
+        <div class="msg out"><span class="who"><span class="var">{asesor}</span> o bot</span>Para que sea fácil, tienes 3 opciones, <span class="var">{nombre}</span> 😊
+
+1️⃣ *Pago único*: <span class="var">{precio_vigente}</span>
+2️⃣ *Apartado*: $1,000 hoy y el resto en 2 pagos (<span class="var">{fecha_1}</span> y <span class="var">{fecha_2}</span>)
+3️⃣ *Meses sin intereses*: hasta 12 con tarjeta de crédito
+
+¿Cuál te acomoda mejor?</div>
+        <div class="btns"><span>Pago único</span><span>Apartar con $1,000</span><span>Meses sin intereses</span></div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N7 · MEDIO DE PAGO</span>
+        <h3>Datos + correo + promesa de acceso</h3>
+        <dl>
+          <dt>Botones</dt><dd>Transferencia u OXXO · Tarjeta · PayPal.</dd>
+          <dt>Pide</dt><dd>El correo desde este paso.</dd>
+          <dt>Si llega una imagen</dt><dd>Se trata como posible comprobante: alerta con SLA de 2 min.</dd>
+        </dl>
+      </div>
+      <div class="chat">
+        <div class="msg in"><span class="who">Cliente</span>Apartar con $1,000</div>
+        <div class="msg out"><span class="who"><span class="var">{asesor}</span> o bot</span>¡Perfecto, <span class="var">{nombre}</span>! Te confirmo tu plan:
+📅 Hoy: $1,000
+📅 <span class="var">{fecha_1}</span>: <span class="var">{monto}</span>
+📅 <span class="var">{fecha_2}</span>: <span class="var">{monto}</span>
+
+¿Cómo prefieres hacer tu primer pago?</div>
+        <div class="btns"><span>Transferencia u OXXO</span><span>Tarjeta</span><span>PayPal</span></div>
+        <div class="msg out"><span class="who"><span class="var">{asesor}</span> o bot</span>Aquí tienes los datos 👇 <span class="var">{datos_o_link}</span>
+
+En cuanto me envíes tu comprobante, *en menos de 10 minutos* te activo el acceso. ¿A qué correo lo activo? 📩</div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N8 · ESPERANDO PAGO</span>
+        <h3>Recordatorios que ayudan, no que presionan</h3>
+        <dl>
+          <dt>+45 min</dt><dd>Ayuda práctica (solo dentro de la ventana prudente).</dd>
+          <dt>Mañana 10:30</dt><dd>Plantilla con la fecha en que vence su lugar.</dd>
+          <dt>"Mañana pago"</dt><dd>Tarea a la hora prometida, con recordatorio al asesor.</dd>
+          <dt>D3 sin pago</dt><dd>Pasa a N10 en el toque 4, sin repetir lo ya visto.</dd>
+        </dl>
+        <p class="small muted">De los 9 leads que recibieron datos o link de pago, 7 no pagaron, y casi ninguno tuvo seguimiento humano a tiempo.</p>
+      </div>
+      <div class="chat">
+        <div class="msg out"><span class="who">+45 min</span>¿Pudiste hacer tu pago, <span class="var">{nombre}</span>? Si la app del banco te pide algo o prefieres otro medio, dime y lo resolvemos 🙌</div>
+        <div class="btns"><span>Ya pagué</span><span>Cambiar medio</span><span>Mañana</span></div>
+        <div class="msg out"><span class="who">Día siguiente · 10:30 · plantilla</span>Buen día, <span class="var">{nombre}</span> ☀️ Tu lugar con <span class="var">{condición}</span> sigue apartado hasta el <span class="var">{fecha_cierre}</span>. ¿Te ayudo a completarlo hoy?</div>
+        <div class="btns"><span>Sí, hoy</span><span>Tengo una duda</span></div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N9 · GANADO + ONBOARDING</span>
+        <h3>De comprador a egresado (y a referido)</h3>
+        <dl>
+          <dt>Al pagar</dt><dd>Mensajes actuales de acceso (se conservan).</dd>
+          <dt>D1</dt><dd>"¿Pudiste entrar?" para evitar accesos perdidos en spam.</dd>
+          <dt>D7</dt><dd>Avance en White Belt y recordatorio del grupo de apoyo.</dd>
+          <dt>D30</dt><dd>Primer DC-3 y pedir referido o testimonio para la bitácora de egresados.</dd>
+        </dl>
+      </div>
+      <div class="chat">
+        <div class="msg out"><span class="who">D1 · 10:30</span>¡Hola, <span class="var">{nombre}</span>! 🎓 ¿Pudiste entrar a tu plataforma? Si el correo no te llegó, dime y te lo reenvío.</div>
+        <div class="btns"><span>Ya entré</span><span>No me llegó</span></div>
+        <div class="msg out"><span class="who">D30</span>¡Felicidades por tu primera DC-3! 🏅 ¿Conoces a alguien de tu equipo a quien también le sirva? <span class="var">{beneficio_referido}</span></div>
+      </div>
+    </article>
+
+    <article class="node">
+      <div class="info">
+        <span class="id">N10 · SEGUIMIENTO 7 DÍAS</span>
+        <h3>Sustituye al Negativo de 40 pasos</h3>
+        <dl>
+          <dt>Toques</dt><dd>6 plantillas con botones (ver la cadencia en la sección 6).</dd>
+          <dt>Ángulos</dt><dd>Duda → confianza → demo → oferta con fecha → crecimiento profesional → cierre amable.</dd>
+          <dt>Corte</dt><dd>Cualquier respuesta o clic lo pasa a N5. Dos toques leídos sin respuesta hacen saltar al cierre amable.</dd>
+        </dl>
+      </div>
+      <div class="chat">
+        <div class="msg out"><span class="who">Toque 1 · +2 h</span><span class="var">{nombre}</span>, ¿pudiste ver el temario? 🙌 Si te quedó alguna duda te la resuelvo por aquí o en una llamada de 5 minutos.</div>
+        <div class="btns"><span>Tengo una duda</span><span>Llamada de 5 min</span><span>Más tarde</span></div>
+        <div class="msg out"><span class="who">Toque 4 · D3 · oferta</span><span class="var">{nombre}</span>, esta semana puedes inscribirte en *<span class="var">{precio_promo}</span>* (regular $3,999) o apartar tu lugar con $1,000. Vale hasta el *<span class="var">{fecha_cierre}</span>*.</div>
+        <div class="btns"><span>Apartar con $1,000</span><span>Ver métodos de pago</span><span>No me interesa</span></div>
+        <div class="msg out"><span class="who">Toque 6 · D7 · cierre amable</span><span class="var">{nombre}</span>, no quiero saturarte de mensajes 🙏 ¿Te sigo compartiendo información o lo dejamos para más adelante?</div>
+        <div class="btns"><span>Sigo interesado</span><span>Más adelante</span><span>No me interesa</span></div>
+      </div>
+    </article>
+
+  </div>
+</section>
+
+<!-- 6 HORARIO -->
+<section id="horario">
+  <div class="sec-head">
+    <div class="eyebrow">6 · Horario y cadencia</div>
+    <h2>Cuándo habla el bot y cuándo calla</h2>
+    <p>El horario de atención (7:00–22:00, sábado desde las 8:00) es cuando hay personas para responder. La ventana proactiva es más estrecha: deja la primera y la última hora para conversaciones vivas y no para empujar ofertas.</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Tipo de envío</th><th>Lunes a viernes</th><th>Sábado</th><th>Domingo</th><th>Regla</th></tr></thead>
+      <tbody>
+        <tr><td>Respuesta a un cliente que escribió en los últimos 15 min</td><td class="mono">24 h</td><td class="mono">24 h</td><td class="mono">24 h</td><td>Inmediata. De 22:00 a 7:00 (sábado hasta las 8:00) en modo nocturno, con 2 mensajes como máximo.</td></tr>
+        <tr><td>Atención humana (SLA vigente)</td><td class="mono">7:00–22:00</td><td class="mono">8:00–22:00</td><td class="mono">7:00–22:00</td><td>Cola de apertura en los primeros 30 min de cada turno.</td></tr>
+        <tr><td>Seguimiento automático (proactivo)</td><td class="mono">9:00–20:30</td><td class="mono">9:30–19:00</td><td class="mono">10:00–19:00</td><td>Escalonado (no en bloque) y a la hora en que el lead suele escribir. El domingo, 1 toque como máximo.</td></tr>
+        <tr><td>Ofertas y plantillas manuales</td><td class="mono">10:00–13:00 · 17:00–20:00</td><td class="mono">10:00–13:00</td><td class="mono">—</td><td>Máximo 1 por lead al día, y nunca si el bot le envió algo en las últimas 24 h.</td></tr>
+        <tr><td>Silencio proactivo</td><td class="mono">20:30–9:00</td><td class="mono">19:00–9:30</td><td class="mono">19:00–10:00</td><td>Lo programado en estas horas se mueve a la siguiente franja preferente del lead.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Cadencia del seguimiento (N10)</h3>
+  <div class="timeline">
+    <div class="tl"><span class="when">D0 · +2 h</span><div class="what"><b>¿Pudiste ver el temario?</b> Ofrece resolver la duda por chat o por llamada. Botones: [Tengo una duda] [Llamada de 5 min] [Más tarde].</div></div>
+    <div class="tl"><span class="when">D1 · 10:30</span><div class="what"><b>Confianza:</b> egresados verificables y DC-3 ante la STPS. Botones: [Ver clase demo] [Ver precios].</div></div>
+    <div class="tl"><span class="when">D2 · 18:30</span><div class="what"><b>Clase demo</b> gratis y sin registro, y "cuéntame qué te pareció". Botones: [Me gustó] [Tengo dudas].</div></div>
+    <div class="tl"><span class="when">D3 · 11:00</span><div class="what"><b>Oferta única de la semana</b> con fecha real (no conteo de lugares). Botones: [Apartar con $1,000] [Ver métodos de pago] [No me interesa].</div></div>
+    <div class="tl"><span class="when">D5 · 19:00</span><div class="what"><b>Crecimiento profesional:</b> perfil público con sus certificaciones para el CV o LinkedIn, y recordatorio de la fecha de cierre. Botones: [Lo quiero] [Tengo dudas].</div></div>
+    <div class="tl"><span class="when">D7 · 12:00</span><div class="what"><b>Cierre amable:</b> "¿lo dejamos para más adelante?". La respuesta clasifica la razón de pérdida o reabre la venta.</div></div>
+    <div class="tl"><span class="when">D+30 / D+45</span><div class="what"><b>Reactivación</b> con la oferta del mes, solo a quien no pidió baja. Lleva una plantilla y, si no hay respuesta, se cierra.</div></div>
+  </div>
+  <p class="small muted">Las horas son de referencia. El CRM debe moverlas ±30 min y acercarlas a la hora en que ese lead escribió por última vez. Si el lead está conversando, el toque espera.</p>
+</section>
+
+<!-- 7 ASESORES -->
+<section id="asesores">
+  <div class="sec-head">
+    <div class="eyebrow">7 · Asesores y SLA</div>
+    <h2>Tiempos máximos según la señal</h2>
+    <p>El bot detecta y avisa; el asesor dueño del lead responde. Si el SLA vence sin respuesta, el lead se reasigna al siguiente asesor en turno y se avisa a gerencia.</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Señal</th><th>Ejemplos de la semana</th><th>Acción</th><th class="num">SLA</th></tr></thead>
+      <tbody>
+        <tr><td><span class="chip crit">Muy caliente</span> Comprobante, "lo quiero", elige forma de pago</td><td>#361, #924, #1063, #1066</td><td>Confirmar monto y fecha, pedir datos, activar acceso.</td><td class="num">2 min</td></tr>
+        <tr><td><span class="chip crit">Muy caliente</span> Botón "Ver métodos pago" o "Apartar"</td><td>#957 (esperó 45 h), #924</td><td>Mandar N6 personalizado y quedarse en la conversación.</td><td class="num">2 min</td></tr>
+        <tr><td><span class="chip warn">Caliente</span> Pregunta de precio, pagos o MSI</td><td>#927, #641, #920, #688</td><td>El bot responde la FAQ al instante; el asesor completa y cierra con pregunta.</td><td class="num">5 min</td></tr>
+        <tr><td><span class="chip warn">Caliente</span> Responde su perfil o área</td><td>29 leads</td><td>Guion oro: permiso, audio y recomendación.</td><td class="num">5 min · audio 10</td></tr>
+        <tr><td><span class="chip warn">Caliente</span> Pregunta sobre DC-3, validez, requisitos u otra ruta</td><td>#1587, #326, #555, #361</td><td>FAQ más respuesta humana específica.</td><td class="num">5 min</td></tr>
+        <tr><td><span class="chip acc">Tibio</span> Rastreo fuerte: 60 s o más, 50% o más de la página, verificó STPS, volvió a abrir</td><td>#920, #375, #1583, #688</td><td>Mensaje suave sin mencionar el rastreo: "¿qué te pareció el temario?".</td><td class="num">15 min</td></tr>
+        <tr><td><span class="chip acc">Tibio</span> "Mañana pago" o una fecha prometida</td><td>#361, #1063, #375, #1216</td><td>Tarea con la hora exacta y recordatorio.</td><td class="num">a la hora pactada</td></tr>
+        <tr><td><span class="chip acc">Tibio</span> Un lead en Perdido responde</td><td>#420 (audio sin respuesta)</td><td>Reabrir y atender.</td><td class="num">15 min</td></tr>
+        <tr><td>Mensaje fuera de horario</td><td>15 leads nocturnos</td><td>Cola de apertura ordenada por temperatura.</td><td class="num">30 min del turno</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="two-lists">
+    <div>
+      <h3>Reglas del equipo</h3>
+      <ul class="check">
+        <li>Un dueño por lead. Otro asesor solo escribe si se le reasigna, y deja nota de traspaso.</li>
+        <li>Toda respuesta termina con una pregunta de siguiente paso. No se usa "quedo atenta" sola.</li>
+        <li>Se usan respuestas rápidas guardadas, no copiar y pegar de otros chats (para evitar otra fuga como la de #993).</li>
+        <li>Se registra el resultado de cada llamada (contestó, no contestó, agendó) en el CRM.</li>
+        <li>No se baja el precio a quien ya se le cotizó; se le da la mejor condición vigente desde el inicio.</li>
+        <li>No se marca Perdido a mano antes de 48 h desde el último toque. El cierre lo hace el flujo.</li>
+        <li>"Inge" solo se usa si no hay nombre. Se cuida el género gramatical ("atento" o "atenta", "seguro" o "segura").</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Cobertura de turnos (propuesta)</h3>
+      <p class="small">La actividad de la semana ya muestra dos bloques naturales: uno empieza entre 7:00 y 8:00 y otro termina entre 21:00 y 22:00. Se propone formalizarlos.</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>Día</th><th>Turno A</th><th>Turno B</th></tr></thead>
+          <tbody>
+            <tr><td>Lunes a viernes</td><td class="mono">7:00–15:00</td><td class="mono">14:00–22:00</td></tr>
+            <tr><td>Sábado</td><td class="mono">8:00–15:00</td><td class="mono">15:00–22:00</td></tr>
+            <tr><td>Domingo</td><td class="mono">7:00–14:30</td><td class="mono">14:30–22:00</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">La hora de traslape (14:00–15:00) sirve para pasar los pendientes calientes. El domingo puede ser una guardia rotativa con alertas al celular.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8 CRM -->
+<section id="crm">
+  <div class="sec-head">
+    <div class="eyebrow">8 · Cambios en el CRM</div>
+    <h2>Qué se configura hoy y qué requiere desarrollo</h2>
+    <p>El CRM hoy guarda un solo horario de bots para todos los días (9:00–21:00) y solo la etapa Negativo lo respeta. Algunas reglas del flujo nuevo ya se pueden configurar; otras necesitan ajustes en el sistema.</p>
+  </div>
+  <div class="two-lists">
+    <div>
+      <h3><span class="chip good">Configuración</span> Se puede hacer ya</h3>
+      <ol class="list">
+        <li><b>Horario de bots:</b> 9:00–20:30 todos los días (ventana proactiva).</li>
+        <li><b>Solo en horario: sí</b> en 1.3, 1.4, 2.x y 3.x y en el empujón de 30 min de 1 Saludo.</li>
+        <li><b>Detener al responder: sí</b> en todas las etapas con temporizador.</li>
+        <li><b>1 Saludo:</b> si el lead responde, cambiar a 1.1 en lugar de "reacción + detener".</li>
+        <li><b>1.3, 1.4, 2.x y 3.x:</b> quitar el regreso al Negativo a las 4 h y crear la etapa "Esperando pago" con sus recordatorios.</li>
+        <li><b>Textos:</b> cambiar "9 certificaciones" por 6; quitar "membresía premium con 50 certificaciones más" y el $1,950 de 3.x; quitar "Salma Pérez" y "excelente día"; poner el precio en texto en 1.2.</li>
+        <li><b>Una oferta vigente</b> con fecha de cierre real en todas las plantillas.</li>
+        <li><b>Razones de pérdida:</b> agregar "Precio", "Fecha de pago futura", "Prefiere otra modalidad o universidad", "Requiere certificación internacional", "Pidió baja" y "Meta no entregó" (no es lo mismo que un bloqueo).</li>
+        <li><b>Plantillas aprobadas</b> con botones para cada toque del seguimiento.</li>
+        <li><b>UTM normalizadas</b> en minúsculas, sin duplicados.</li>
+      </ol>
+    </div>
+    <div>
+      <h3><span class="chip warn">Desarrollo</span> Requiere ajustes en el sistema</h3>
+      <ol class="list">
+        <li>Horario de atención por día (L–V y Dom 7–22, Sáb 8–22), separado de la ventana proactiva.</li>
+        <li>Variable <span class="mono">{{saludo}}</span> según la hora y condición "fuera de horario" dentro de las secuencias.</li>
+        <li>Botones de respuesta rápida dentro de la ventana de 24 h (mensajes interactivos) y ramas por botón.</li>
+        <li>Envíos escalonados y a la "hora del lead", con cola de prioridad al abrir la ventana.</li>
+        <li>Pausar la secuencia cuando <b>escribe un asesor</b>, no solo cuando responde el cliente.</li>
+        <li>Detección de preguntas por palabras clave, con FAQ y alerta.</li>
+        <li>Alertas de señal caliente (sonido o celular), etiqueta Destacado automática, tarea con SLA y escalamiento.</li>
+        <li>Bloquear plantillas masivas a quien recibió un mensaje del bot en las últimas 24 h, y respetar bajas en todos los embudos.</li>
+        <li>Leer los códigos de error de Meta (baja de marketing, límite de entrega) y no registrarlos como bloqueo.</li>
+        <li>Umbral de rastreo: alertar solo con señales fuertes.</li>
+        <li>Link de Stripe con monto por lead y confirmación automática del pago a Ganado.</li>
+        <li>Tablero de SLA por asesor (hoy las métricas de bots, horarios y campañas solo las ve el administrador).</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- 9 KPIS -->
+<section id="kpis">
+  <div class="sec-head">
+    <div class="eyebrow">9 · Metas para el piloto</div>
+    <h2>Cómo sabremos si funcionó</h2>
+    <p>Propuesta: correr el flujo nuevo dos semanas solo en Manufactura y Calidad y comparar contra esta semana.</p>
+  </div>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Indicador</th><th class="num">5–12 oct</th><th class="num">Meta piloto</th></tr></thead>
+      <tbody>
+        <tr><td>Responden al saludo</td><td class="num">80%</td><td class="num">≥ 80%</td></tr>
+        <tr><td>Responden la pregunta de perfil</td><td class="num">39%</td><td class="num">≥ 50%</td></tr>
+        <tr><td>Primer mensaje humano tras la respuesta del cliente (mediana, en horario)</td><td class="num">12.4 min</td><td class="num">≤ 5 min</td></tr>
+        <tr><td>Leads que esperan más de 1 h su primer mensaje humano (o nunca lo reciben)</td><td class="num">41%</td><td class="num">≤ 10%</td></tr>
+        <tr><td>Señales muy calientes atendidas en 2 min o menos</td><td class="num">no se mide</td><td class="num">≥ 90%</td></tr>
+        <tr><td>Mensajes del bot por lead</td><td class="num">18.4</td><td class="num">≤ 12</td></tr>
+        <tr><td>Mensajes proactivos fuera de la ventana</td><td class="num">213</td><td class="num">0</td></tr>
+        <tr><td>Mensajes del bot encima de un asesor (30 min o menos)</td><td class="num">101</td><td class="num">0</td></tr>
+        <tr><td>Reciben las opciones de pago</td><td class="num">22%</td><td class="num">≥ 35%</td></tr>
+        <tr><td>Conversión de lead a venta</td><td class="num">2.7%</td><td class="num">6–8%</td></tr>
+        <tr><td>Perdidos con una razón distinta de "No contestaron"</td><td class="num">7%</td><td class="num">≥ 40%</td></tr>
+        <tr><td>Bajas o bloqueos</td><td class="num">3</td><td class="num">seguimiento</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3>Pruebas A/B sugeridas</h3>
+  <ul class="list">
+    <li>Precio en el primer bloque contra precio después del perfil.</li>
+    <li>Pregunta de perfil con botones contra texto libre.</li>
+    <li>Oferta con fecha de cierre real contra conteo de lugares.</li>
+    <li>Toque de seguimiento a las 10:30 contra a la "hora del lead".</li>
+    <li>Audio de asesor de 60 s contra 90 s.</li>
+  </ul>
+</section>
+
+<!-- 10 PULIR -->
+<section id="pulir">
+  <div class="sec-head">
+    <div class="eyebrow">10 · Para pulir juntos</div>
+    <h2>Decisiones que necesito de ti</h2>
+    <p>Con estas respuestas cierro la versión 2 del flujo, los textos finales y la lista de plantillas para aprobar en Meta.</p>
+  </div>
+  <ol class="list">
+    <li><b>Escalera de precios oficial.</b> ¿Lista $3,999, promo semanal $2,799 y apartado de $1,000? ¿Se eliminan $3,799 y $1,950? ¿Cómo explicamos el "50%" del anuncio?</li>
+    <li><b>Precio de estudiante.</b> Hoy $3,400 queda arriba de la promo de $2,799. ¿Se ajusta, se convierte en "promo + beneficio" o se retira?</li>
+    <li><b>Escasez o fecha.</b> Recomiendo fecha de cierre real en lugar de "lugares". ¿Hay un cupo real que podamos comunicar?</li>
+    <li><b>Remitente.</b> ¿"Asistente SyS" que presenta al asesor asignado, o el asesor firma desde el inicio?</li>
+    <li><b>Turnos.</b> ¿Quién cubre 7:00–9:00, 20:00–22:00, sábados y domingos? ¿El domingo es guardia?</li>
+    <li><b>Cobro.</b> ¿Cuenta empresarial o link de pago con monto, y opción de factura?</li>
+    <li><b>Certificación internacional.</b> ¿Cuál es la respuesta oficial (CSSC, costo y descuento)?</li>
+    <li><b>Empresas.</b> ¿Los leads de "es para mi empresa" pasan al eje Empresas?</li>
+    <li><b>Nombre por defecto.</b> ¿Usamos el nombre de perfil de WhatsApp cuando no lo dan, o "Inge"?</li>
+  </ol>
+</section>
+
+<footer>
+  <p><b>Metodología.</b> Se consultó el CRM en modo de solo lectura, con un usuario de rol vendedor, y no se modificó ningún dato. El universo son los leads que llegaron al embudo Manufactura y Calidad entre el 5 de octubre 00:00 y el 12 de octubre 23:59 (America/Monterrey, UTC−6), con sus mensajes, movimientos de etapa, notas y secuencias hasta el 13 de octubre. Los tiempos de respuesta se calculan entre el primer mensaje de cada bloque del cliente y el siguiente mensaje de un asesor (sin contar notas internas ni mensajes del bot). Las lecturas dependen de que el cliente tenga activadas las confirmaciones. Las métricas internas de bots, horarios y campañas del CRM requieren rol administrador, por lo que se calcularon desde las conversaciones. Es una sola semana con 2 ventas, así que las tasas son orientativas. Por privacidad, los leads se citan solo por su número en el CRM.</p>
+</footer>
+</div>
+
+<div class="tip" id="tip" hidden></div>
+
+<script>
+(function(){
+  var H={"cliente":[1,2,0,0,0,0,3,9,19,29,20,35,42,22,16,20,24,5,25,16,6,10,11,6],
+         "bot":[9,18,0,1,0,1,11,66,31,323,39,119,111,145,81,58,62,47,62,51,53,42,28,6],
+         "asesor":[0,0,0,0,0,0,0,4,62,33,40,36,67,43,34,16,25,10,35,15,17,4,5,0]};
+  var rows=[["cliente","Mensajes de clientes","--s1"],["bot","Mensajes del bot","--s2"],["asesor","Mensajes de asesores","--s3"]];
+  var tip=document.getElementById('tip');
+  function showTip(e,txt){tip.textContent=txt;tip.hidden=false;var x=e.clientX+12,y=e.clientY+12;if(x+240>window.innerWidth)x=e.clientX-250;tip.style.left=x+'px';tip.style.top=y+'px';}
+  function hideTip(){tip.hidden=true;}
+  var NS='http://www.w3.org/2000/svg';
+  function el(n,a){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);return e;}
+  // Small multiples: 3 filas, 24 horas
+  var W=880,left=150,right=16,rowH=86,top=8,gap=14,plotH=58;
+  var Ht=top+rows.length*(rowH)+28;
+  var svg=el('svg',{viewBox:'0 0 '+W+' '+Ht,role:'img','aria-label':'Mensajes por hora del día: clientes, bot y asesores'});
+  var cw=(W-left-right)/24;
+  function hx(h){return left+h*cw;}
+  rows.forEach(function(r,i){
+    var y0=top+i*rowH, base=y0+plotH;
+    var data=H[r[0]], max=Math.max.apply(null,data);
+    // franjas sin atención 22-24 y 0-7
+    svg.appendChild(el('rect',{x:hx(0),y:y0,width:cw*7,height:plotH,fill:'var(--band)'}));
+    svg.appendChild(el('rect',{x:hx(22),y:y0,width:cw*2,height:plotH,fill:'var(--band)'}));
+    var lab=el('text',{x:0,y:y0+16,'class':'t-ink'});lab.textContent=r[1];lab.setAttribute('style','font-family:var(--f-body);font-size:12px;font-weight:600');svg.appendChild(lab);
+    var tot=data.reduce(function(a,b){return a+b},0);
+    var l2=el('text',{x:0,y:y0+32});l2.textContent='total '+tot+' · máx '+max;svg.appendChild(l2);
+    svg.appendChild(el('line',{x1:left,x2:W-right,y1:base,y2:base,stroke:'var(--line)','stroke-width':1}));
+    data.forEach(function(v,h){
+      var bh=max?Math.max(v?2:0,(v/max)*(plotH-6)):0;
+      var bw=cw-2, x=hx(h)+1;
+      if(v>0){
+        var rad=Math.min(4,bw/2,bh);
+        var d='M'+x+','+base+' v'+(-(bh-rad))+' q0,'+(-rad)+' '+rad+','+(-rad)+' h'+(bw-2*rad)+' q'+rad+',0 '+rad+','+rad+' v'+(bh-rad)+' z';
+        svg.appendChild(el('path',{d:d,fill:'var('+r[2]+')'}));
+      }
+      if(v===max){var t=el('text',{x:x+bw/2,y:base-bh-4,'text-anchor':'middle','class':'t-ink'});t.textContent=v;svg.appendChild(t);}
+      var hit=el('rect',{x:hx(h),y:y0,width:cw,height:plotH,fill:'transparent'});
+      var hh=(h<10?'0':'')+h;
+      hit.addEventListener('mousemove',function(e){showTip(e,hh+':00–'+hh+':59 · '+v+' '+r[1].toLowerCase());});
+      hit.addEventListener('mouseleave',hideTip);
+      svg.appendChild(hit);
+    });
+  });
+  var axisY=top+rows.length*rowH-rowH+plotH+16;
+  for(var h=0;h<24;h+=3){var t=el('text',{x:hx(h)+cw/2,y:axisY,'text-anchor':'middle'});t.textContent=(h<10?'0':'')+h+':00';svg.appendChild(t);}
+  var nt=el('text',{x:hx(0)+4,y:top+12});nt.textContent='sin atención';svg.appendChild(nt);
+  document.getElementById('hours').appendChild(svg);
+  // tabla
+  var tb='<table><thead><tr><th>Hora</th><th class="num">Clientes</th><th class="num">Bot</th><th class="num">Asesores</th></tr></thead><tbody>';
+  for(var h2=0;h2<24;h2++){tb+='<tr><td class="mono">'+(h2<10?'0':'')+h2+':00</td><td class="num">'+H.cliente[h2]+'</td><td class="num">'+H.bot[h2]+'</td><td class="num">'+H.asesor[h2]+'</td></tr>';}
+  document.getElementById('hours-table').innerHTML=tb+'</tbody></table>';
+
+  function hbars(id,items,max,fmt){
+    var box=document.getElementById(id);
+    items.forEach(function(it){
+      var row=document.createElement('div');row.className='hb';
+      var pct=Math.max(0.6,100*it[1]/max);
+      row.innerHTML='<span>'+it[0]+'</span><div class="track"><div class="fill'+(it[2]?' '+it[2]:'')+'" style="width:'+pct+'%"></div></div><span class="val">'+fmt(it)+'</span>';
+      row.addEventListener('mousemove',function(e){showTip(e,it[0]+': '+fmt(it));});
+      row.addEventListener('mouseleave',hideTip);
+      box.appendChild(row);
+    });
+  }
+  hbars('funnel',[["Entraron al embudo",74],["Respondieron al bot",59],["Recibieron las opciones de pago",16],["Recibieron datos o link de pago",9],["Pagaron",2]],74,function(it){return it[1]+' · '+Math.round(100*it[1]/74)+'%';});
+  hbars('resp',[["5 min o menos",120],["5 a 15 min",38],["15 a 60 min",11],["1 a 4 h",1],["Más de 4 h",24,"crit"]],194,function(it){return it[1]+' · '+Math.round(100*it[1]/194)+'%';});
+  hbars('first',[["15 min o menos",29],["15 a 60 min",6],["1 a 24 h",2],["Más de 24 h (plantilla masiva)",19,"crit"],["Nunca",3,"crit"]],59,function(it){return it[1]+' leads';});
+
+  // tabla de pasos
+  var S=[
+   ["1 Saludo","¿Me compartes tu nombre?",74,70,54],
+   ["1.2 Lista de cursos","¿En qué área trabajas o estudias?",75,71,29],
+   ["1.3 Llamadita","¿Te hago una llamadita?",28,61,10],
+   ["1.3 Llamadita","¿Te muestro cómo quedaría en tu caso?",25,52,9],
+   ["1.4 Facilidad de pago","¿Cuál de estos 3 te interesa más?",7,57,5],
+   ["Negativo · ronda 1","Audio + imagen + egresados",63,62,1],
+   ["Negativo · ronda 2","Clase demo + “cuando la veas, dime”",61,57,4],
+   ["Negativo · ronda 3","64 certificaciones + “si te interesa, dime”",55,51,3],
+   ["Negativo · ronda 3","Oferta relámpago (botones)",50,40,2],
+   ["Negativo · ronda 4","Perfil profesional para CV",18,28,0],
+   ["Negativo · ronda 4","Última oportunidad, “4 lugares”",16,31,1]
+  ];
+  var t2='<table><thead><tr><th>Etapa</th><th>Mensaje que pide algo</th><th class="num">Enviados</th><th class="num">Leídos</th><th class="num">Respuesta directa</th><th class="barcell"></th></tr></thead><tbody>';
+  S.forEach(function(s){var p=Math.round(100*s[4]/s[2]);t2+='<tr><td>'+s[0]+'</td><td>'+s[1]+'</td><td class="num">'+s[2]+'</td><td class="num">'+s[3]+'%</td><td class="num">'+s[4]+' · '+p+'%</td><td class="barcell"><div class="bar" style="width:'+Math.max(1,p)+'%"></div></td></tr>';});
+  document.getElementById('steps-table').innerHTML=t2+'</tbody></table>';
+})();
+</script>
