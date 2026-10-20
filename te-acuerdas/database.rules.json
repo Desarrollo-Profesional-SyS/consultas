@@ -1,0 +1,79 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      "$room": {
+        ".read": "auth != null && (data.child('owner').val() === auth.uid || data.child('hosts').child(auth.uid).exists())",
+        "owner": {
+          ".read": "auth != null",
+          ".write": "auth != null && !data.exists() && newData.val() === auth.uid"
+        },
+        "hostKey": {
+          ".write": "auth != null && !data.exists() && newData.parent().child('owner').val() === auth.uid",
+          ".validate": "newData.isString() && newData.val().length >= 16"
+        },
+        "createdAt": {
+          ".write": "auth != null && newData.parent().child('owner').val() === auth.uid"
+        },
+        "hosts": {
+          "$uid": {
+            ".read": "auth != null && auth.uid === $uid",
+            ".write": "auth != null && auth.uid === $uid && newData.val() === root.child('rooms').child($room).child('hostKey').val()"
+          }
+        },
+        "state": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "rounds": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "order2": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "cmd": {
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "overrides": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "results": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "kicked": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "players": {
+          ".read": "auth != null",
+          "$pid": {
+            ".write": "auth != null && root.child('rooms').child($room).child('owner').exists() && (auth.uid === $pid || root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())",
+            "name": {
+              ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
+            },
+            "avatar": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 16"
+            }
+          }
+        },
+        "answers": {
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())",
+          "$r": {
+            "$pid": {
+              ".read": "auth != null && auth.uid === $pid",
+              ".write": "auth != null && ((auth.uid === $pid && (root.child('rooms').child($room).child('rounds').child($r).child('status').val() === 'running' || root.child('rooms').child($room).child('rounds').child($r).child('status').val() === 'paused')) || root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())",
+              "$field": {
+                ".validate": "(($field === '_t' || $field === '_d') && newData.isNumber()) || ($field !== '_t' && $field !== '_d' && newData.isString() && newData.val().length <= 40)"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

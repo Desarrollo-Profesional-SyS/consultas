@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#160A26">
+<title>¿Te acuerdas? — Panel de Alex</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23C6F432' stroke='%2307030D' stroke-width='8'/%3E%3Ccircle cx='38' cy='45' r='12' fill='%23FFF4E0'/%3E%3Ccircle cx='64' cy='42' r='9' fill='%23FFF4E0'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="panel">
+  <header class="panel-head">
+    <div class="row" style="gap:14px">
+      <span class="brand" style="font-size:26px">PANEL DE ALEX</span>
+      <span class="pill" id="roomPill">SALA ····</span>
+      <span class="pill"><span class="dot" id="netDot"></span><span id="netTxt">conectando…</span></span>
+    </div>
+    <div class="row">
+      <button class="btn small" id="copyLink">Copiar link para el chat</button>
+    </div>
+  </header>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="live" aria-selected="true">En vivo</button>
+    <button role="tab" data-tab="players">Jugadores <span class="badge" id="nPlayers">0</span></button>
+    <button role="tab" data-tab="review">Revisar respuestas</button>
+    <button role="tab" data-tab="table">Tabla</button>
+    <button role="tab" data-tab="rehearsal">Ensayo</button>
+  </nav>
+  <section id="tab" aria-live="polite"><p class="lead">Conectando…</p></section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script type="module" src="js/admin.js"></script>
+</body>
+</html>
