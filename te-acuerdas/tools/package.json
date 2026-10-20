@@ -1,0 +1,20 @@
+{
+  "name": "te-acuerdas-tools",
+  "private": true,
+  "type": "module",
+  "description": "Herramientas de desarrollo: empaqueta Firebase, copia fuentes/íconos y arma slides-data.js",
+  "scripts": {
+    "vendor": "node vendor.mjs",
+    "slides": "node build-slides.mjs",
+    "test": "node e2e.mjs"
+  },
+  "devDependencies": {
+    "@fontsource/bowlby-one": "5.3.0",
+    "@fontsource/rubik": "5.3.0",
+    "esbuild": "0.28.2",
+    "firebase": "13.0.0",
+    "lucide-static": "1.59.0",
+    "playwright": "^1.56.1",
+    "qrcode-generator": "2.0.4"
+  }
+}

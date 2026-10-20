@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>¿Te acuerdas? — Presentación</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23FF7BB0' stroke='%2307030D' stroke-width='8'/%3E%3Ccircle cx='38' cy='45' r='12' fill='%23FFF4E0'/%3E%3Ccircle cx='64' cy='42' r='9' fill='%23FFF4E0'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/bowlby-one-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/deck.css">
+</head>
+<body>
+<div id="viewport"><div id="stage" aria-live="polite"></div></div>
+
+<div id="hud" role="toolbar" aria-label="Controles de la presentación">
+  <span class="net" title="Conexión"><span class="dot" id="netDot"></span><span id="netTxt">—</span></span>
+  <button id="hPrev" title="Anterior (←)" aria-label="Anterior"></button>
+  <span class="count" id="hCount">1 / 50</span>
+  <button id="hNext" title="Siguiente (→)" aria-label="Siguiente"></button>
+  <button id="hNotes" title="Notas en otra ventana (N)" aria-label="Notas"></button>
+  <button id="hSound" title="Sonido (S)" aria-label="Sonido"></button>
+  <button id="hFull" title="Pantalla completa (F)" aria-label="Pantalla completa"></button>
+  <button id="hMenu" title="Menú y links (M)" aria-label="Menú"></button>
+</div>
+<div id="hint"></div>
+
+<div id="setup">
+  <div class="setup-wrap">
+    <div class="row" style="justify-content:space-between">
+      <span class="kicker">Pantalla de Joss · solo tú la ves antes de compartir</span>
+      <span id="modeBadge" class="mode">…</span>
+    </div>
+    <h1 class="display">¿TE ACUERDAS?<br>EL JUEGO</h1>
+
+    <div id="stepRoom" class="card">
+      <h3>1. La sala del juego</h3>
+      <p id="roomMsg">Conectando…</p>
+      <div class="row">
+        <button id="btnResume" class="btn" hidden></button>
+        <button id="btnCreate" class="btn pink" disabled>Crear sala nueva</button>
+      </div>
+    </div>
+
+    <div id="stepLinks" class="setup-grid" hidden>
+      <div class="card">
+        <h3>2. Manda el panel a Alex (por privado)</h3>
+        <p>Con este link Alex controla el reloj, corrige respuestas y ve la tabla. No lo compartas con el grupo.</p>
+        <div class="linkbox"><code id="adminLink"></code><button class="btn small cream" data-copy="adminLink">Copiar</button></div>
+        <h3 style="margin-top:14px">Link para el chat (jugadores)</h3>
+        <p>El QR aparece en la diapositiva de la sala. Este link es para quien juegue desde la compu.</p>
+        <div class="linkbox"><code id="playerLink"></code><button class="btn small cream" data-copy="playerLink">Copiar</button></div>
+        <div class="row" id="localTools" hidden>
+          <button id="btnFakePlayer" class="btn small dark">Abrir un jugador de prueba</button>
+          <button id="btnFakeAdmin" class="btn small dark">Abrir el panel de Alex</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>3. Para presentar</h3>
+        <div class="keys">
+          <kbd>→</kbd><span>Siguiente (también clic, espacio o el control remoto)</span>
+          <kbd>←</kbd><span>Anterior</span>
+          <kbd>F</kbd><span>Pantalla completa</span>
+          <kbd>N</kbd><span>Notas del orador en otra ventana</span>
+          <kbd>S</kbd><span>Sonidos sí / no</span>
+          <kbd>M</kbd><span>Volver a este menú</span>
+        </div>
+        <p style="margin-top:14px">En «Escribe del 1 al 20» y en la segunda ronda, el clic <b>arranca el reloj</b>. Cuando llega a cero, los celulares se bloquean solos.</p>
+        <div class="row">
+          <label class="row" style="gap:8px;color:var(--mist)"><input type="checkbox" id="soundChk"> Sonidos</label>
+          <label class="row" style="gap:8px;color:var(--mist)">Empezar en
+            <select id="startAt" style="font:inherit;border-radius:10px;padding:6px;background:var(--night);color:var(--cream);border:2px solid var(--grape)"></select>
+          </label>
+        </div>
+        <div class="row" style="margin-top:16px">
+          <button id="btnStart" class="btn" style="font-size:22px">▶ Empezar presentación</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script type="module" src="js/presenter.js"></script>
+</body>
+</html>

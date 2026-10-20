@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#160A26">
+<title>¿Te acuerdas? — Juega</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='46' fill='%23FF7BB0' stroke='%2307030D' stroke-width='8'/%3E%3Ccircle cx='38' cy='45' r='12' fill='%23FFF4E0'/%3E%3Ccircle cx='64' cy='42' r='9' fill='%23FFF4E0'/%3E%3C/svg%3E">
+<link rel="preload" href="fonts/bowlby-one-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<main class="phone">
+  <header class="topbar">
+    <span class="brand">¿TE ACUERDAS?</span>
+    <span class="me" id="me"></span>
+  </header>
+  <section id="view" class="screen center" aria-live="polite">
+    <p class="lead">Conectando…</p>
+  </section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script type="module" src="js/player.js"></script>
+</body>
+</html>

@@ -1,0 +1,381 @@
+// El celular de cada participante: entrar a la sala (avatar + nombre), ver la
+// pantalla mientras pasan las palabras, contestar las dos rondas y ver su lugar.
+import { openStore } from './store.js';
+import { Room, timeLeft, isOpen } from './room.js';
+import { avatarSVG, AVATAR_COUNT } from './avatars.js';
+import { WORDS, N_WORDS, RANGES, clampName, fmtTime, escapeHtml } from './game.js';
+
+const $ = (id) => document.getElementById(id);
+const view = $('view');
+const JOKES = ['Bienvenido al club. Es lo normal.', 'Arriba del promedio. Nada mal.', 'Sospechoso. ¿Hiciste trampa?', 'Ven a dar tú la capacitación.'];
+
+let store;
+let room;
+let st = { state: {}, rounds: {}, players: {}, results: {}, kicked: {}, order2: [], mine: { 1: null, 2: null } };
+let me = null; // { name, avatar }
+let editing = false;
+let draft = { name: '', avatar: null };
+let screenKey = '';
+let sheetRound = 0;
+let pending = {};
+let saveTimer = null;
+let wakeLock = null;
+
+function toast(msg, ms = 2400) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+async function boot() {
+  const params = new URLSearchParams(location.search);
+  const code = (params.get('s') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+  try {
+    store = await openStore();
+  } catch (e) {
+    console.error(e);
+    view.innerHTML = `<p class="mid">Sin conexión</p><p class="lead">No pudimos conectarnos. Revisa tu internet y vuelve a abrir el link.</p><button class="btn" onclick="location.reload()">Reintentar</button>`;
+    return;
+  }
+  if (!code) return askCode();
+  room = new Room(store, code);
+  if (!(await room.exists().catch(() => false))) return askCode(`No encontramos la sala ${code}. Revisa el código.`);
+
+  const watch = (path, key) => room.on(path, (v) => { st[key] = v || (key === 'order2' ? [] : {}); render(); });
+  watch('state', 'state');
+  watch('rounds', 'rounds');
+  watch('players', 'players');
+  watch('results', 'results');
+  watch('kicked', 'kicked');
+  watch('order2', 'order2');
+  for (const r of [1, 2]) room.on(`answers/${r}/${store.uid}`, (v) => { st.mine[r] = v; render(); });
+  store.onConnection((ok) => {
+    if (ok && me) room.markOnline().catch(() => {});
+    if (!ok && me) toast('Sin conexión… reintentando', 2000);
+  });
+  setInterval(tickTimer, 250);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && isOpen(st.rounds[sheetRound])) lockScreen(true); });
+}
+
+function askCode(msg = '') {
+  view.innerHTML = `
+    <p class="mid">ENTRA A LA SALA</p>
+    <p class="lead">${escapeHtml(msg) || 'Escribe el código de 4 letras que aparece en la pantalla.'}</p>
+    <input class="input" id="code" maxlength="4" autocomplete="off" autocapitalize="characters" style="text-align:center;font-size:32px;letter-spacing:10px;text-transform:uppercase" aria-label="Código de la sala">
+    <button class="btn" id="go">Entrar</button>`;
+  $('go').onclick = () => {
+    const c = $('code').value.toUpperCase().replace(/[^A-Z]/g, '');
+    if (c.length === 4) location.search = `?s=${c}${new URLSearchParams(location.search).has('ensayo') ? '&ensayo' : ''}`;
+  };
+}
+
+// ---------- Qué pantalla toca ----------
+function render() {
+  const mineP = st.players?.[store.uid];
+  me = mineP?.name ? { name: mineP.name, avatar: mineP.avatar ?? 0 } : null;
+  $('me').innerHTML = me && !editing ? `${avatarSVG(me.avatar, { size: 36 })}<span>${escapeHtml(me.name)}</span>` : room ? `<span class="pill">SALA ${room.code}</span>` : '';
+
+  if (st.kicked?.[store.uid]) return show('kicked', kickedScreen);
+  if (!me || editing) return show(`join${editing ? '-edit' : ''}`, joinScreen);
+
+  const open = [1, 2].find((r) => isOpen(st.rounds[r]));
+  if (open) return show(`sheet-${open}`, () => sheetScreen(open), true);
+
+  const stage = st.state?.stage || 'pre';
+  const s1 = st.rounds?.[1]?.status || 'idle';
+  const s2 = st.rounds?.[2]?.status || 'idle';
+  const res = st.results?.[store.uid];
+
+  if (s2 === 'closed' || stage === 'final') {
+    if (s2 === 'closed' || s1 === 'closed') return show(`final-${!!res}-${res?.r1}-${res?.r2}-${res?.place}-${st.results?._meta?.count}`, finalScreen);
+  }
+  if (stage === 'r2') return show('ready-2', () => readyScreen(2));
+  if (s1 === 'closed' && (stage === 'r1' || stage === 'after1' || stage === 'code')) {
+    return show(`after1-${stage}-${res?.r1}-${res?.place}-${res?.h1}`, () => afterOneScreen(stage));
+  }
+  if (stage === 'r1') return show('ready-1', () => readyScreen(1));
+  if (stage === 'watch') return show(`watch-${st.state.word || 0}`, watchScreen, false, true);
+  const count = Object.keys(st.players || {}).filter((id) => !st.kicked?.[id]).length;
+  return show(`wait-${count}-${me.name}-${me.avatar}`, waitScreen);
+}
+
+// Redibuja solo si cambió la pantalla (para no perder lo que se está escribiendo).
+function show(key, fn, sticky = false, soft = false) {
+  if (key === screenKey) return;
+  if (soft && screenKey.split('-')[0] === key.split('-')[0]) {
+    const prevKey = screenKey;
+    screenKey = key;
+    if (prevKey.startsWith('watch')) return updateWatch();
+  }
+  const leavingSheet = screenKey.startsWith('sheet') && !key.startsWith('sheet');
+  screenKey = key;
+  if (leavingSheet) { flush(); lockScreen(false); }
+  view.classList.remove('screen');
+  void view.offsetWidth;
+  view.classList.add('screen');
+  view.className = `screen ${sticky ? '' : 'center'}`;
+  fn();
+  scrollTo({ top: 0 });
+}
+
+// ---------- Entrar ----------
+function joinScreen() {
+  if (draft.avatar === null) {
+    draft = me ? { name: me.name, avatar: me.avatar } : { name: '', avatar: Math.floor(Math.random() * AVATAR_COUNT) };
+  }
+  view.innerHTML = `
+    <div class="bounce" id="preview">${avatarSVG(draft.avatar, { size: 120 })}</div>
+    <div class="field" style="text-align:left">
+      <p class="label">1. Elige tu avatar</p>
+      <div class="avatars" role="group" aria-label="Avatares">
+        ${Array.from({ length: AVATAR_COUNT }, (_, i) => `<button type="button" data-a="${i}" aria-pressed="${i === draft.avatar}">${avatarSVG(i, { size: 80 })}</button>`).join('')}
+      </div>
+    </div>
+    <div class="field" style="text-align:left">
+      <label class="label" for="name">2. Tu nombre</label>
+      <input class="input" id="name" maxlength="18" autocomplete="nickname" enterkeyhint="go" placeholder="Como te dicen en la ofi" value="${escapeHtml(draft.name)}">
+      <span class="hint-text">Así vas a salir en la pantalla y en la tabla.</span>
+    </div>
+    <button class="btn" id="join" style="font-size:22px;min-height:60px">${editing ? 'Guardar cambios' : '¡Entrar al juego!'}</button>
+    ${editing ? '<button class="btn ghost" id="cancel">Cancelar</button>' : ''}`;
+  view.querySelectorAll('.avatars button').forEach((b) => {
+    b.onclick = () => {
+      draft.avatar = +b.dataset.a;
+      view.querySelectorAll('.avatars button').forEach((x) => x.setAttribute('aria-pressed', x === b));
+      $('preview').innerHTML = avatarSVG(draft.avatar, { size: 120 });
+      navigator.vibrate?.(10);
+    };
+  });
+  const name = $('name');
+  name.oninput = () => { draft.name = name.value; };
+  name.onkeydown = (e) => { if (e.key === 'Enter') $('join').click(); };
+  $('join').onclick = async () => {
+    const n = clampName(name.value);
+    if (!n) { toast('Escribe tu nombre'); name.focus(); return; }
+    $('join').disabled = true;
+    try {
+      await room.join(n, draft.avatar);
+      await room.markOnline();
+      editing = false;
+      navigator.vibrate?.([20, 40, 20]);
+      render();
+    } catch (e) {
+      console.error(e);
+      toast('No se pudo entrar. Intenta otra vez.');
+      $('join').disabled = false;
+    }
+  };
+  if ($('cancel')) $('cancel').onclick = () => { editing = false; render(); };
+}
+
+function kickedScreen() {
+  view.innerHTML = `<p class="mid">FUERA DEL JUEGO</p><p class="lead">Alex retiró este nombre del juego. Si fue un error, avísale por el chat.</p>`;
+}
+
+// ---------- Esperando ----------
+function waitScreen() {
+  const count = Object.keys(st.players || {}).filter((id) => !st.kicked?.[id]).length;
+  view.innerHTML = `
+    <div class="bounce" style="margin-top:12px">${avatarSVG(me.avatar, { size: 170 })}</div>
+    <p class="big">¡LISTO, ${escapeHtml(me.name.toUpperCase())}!</p>
+    <p class="lead">Ya estás en el juego. <b>Mira la pantalla de Joss</b>: el reto empieza en un momento.</p>
+    <span class="pill">${count} ${count === 1 ? 'cerebro conectado' : 'cerebros conectados'}</span>
+    <button class="btn ghost small" id="edit">Cambiar nombre o avatar</button>`;
+  $('edit').onclick = () => { editing = true; draft.avatar = null; render(); };
+}
+
+function watchScreen() {
+  view.innerHTML = `
+    <p class="label" style="margin-top:20px">El reto está en curso</p>
+    <p class="big">MIRA LA PANTALLA</p>
+    <p class="lead">Escucha a Alex y <b>no anotes nada</b>. Cuando terminen las 20 palabras, aquí se abren las casillas.</p>
+    <div class="dots" id="dots">${Array.from({ length: N_WORDS }, () => '<i></i>').join('')}</div>
+    <p class="lead" id="wordTxt"></p>`;
+  updateWatch();
+}
+
+function updateWatch() {
+  const w = st.state?.word || 0;
+  const dots = $('dots');
+  if (!dots) return;
+  [...dots.children].forEach((d, i) => { d.className = i + 1 < w ? 'on' : i + 1 === w ? 'now' : ''; });
+  $('wordTxt').textContent = w ? `Palabra ${w} de ${N_WORDS}` : 'Prepárate…';
+}
+
+function readyScreen(r) {
+  const done = st.rounds?.[r]?.status === 'closed';
+  view.innerHTML = r === 1
+    ? `<p class="label" style="margin-top:20px">Ronda 1 · sin ayuda</p>
+       <p class="big pulse">PREPÁRATE</p>
+       <p class="lead">En cuanto Joss dé clic se abren <b>20 casillas</b>. Escribe cada palabra en su número; si no recuerdas alguna, déjala vacía.</p>
+       <p class="lead">Tienes <b>2 minutos</b>.</p>`
+    : `<p class="label" style="margin-top:20px">Segunda ronda · con el código</p>
+       <p class="big pulse">${done ? '¡TIEMPO!' : 'OTRA VEZ…'}</p>
+       <p class="lead">${done ? 'Calculando tu resultado…' : 'Ahora te las vamos a pedir <b>en desorden</b>. Usa el gancho de cada número.'}</p>`;
+}
+
+// ---------- La hoja ----------
+function sheetScreen(r) {
+  sheetRound = r;
+  pending = {};
+  const order = r === 2 && st.order2?.length === N_WORDS ? st.order2 : Array.from({ length: N_WORDS }, (_, i) => i + 1);
+  const mine = st.mine[r] || {};
+  const done = !!mine._d;
+  view.innerHTML = `
+    <div class="sheet-head">
+      <div>
+        <p class="label">${r === 1 ? 'Ronda 1' : 'Ronda 2 · en desorden'}</p>
+        <p style="margin:0;font-weight:800;color:var(--cream)" id="filled"></p>
+      </div>
+      <div class="timer ${r === 2 ? 'r2' : ''}" id="timer">0:00</div>
+    </div>
+    <p class="lead" style="text-align:left">${r === 1 ? 'Escribe cada palabra en su número.' : 'Ojo: los números van salteados.'} Se guarda solo mientras escribes.</p>
+    <div class="sheet" id="sheet" aria-disabled="${done}">
+      ${order.map((n, i) => `
+        <label class="slot" for="w${n}">
+          <span class="num">${n}</span>
+          <input class="input" id="w${n}" data-n="${n}" data-i="${i}" maxlength="40" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="${i === N_WORDS - 1 ? 'done' : 'next'}" value="${escapeHtml(mine['w' + n] || '')}" ${done ? 'disabled' : ''} aria-label="Palabra ${n}">
+        </label>`).join('')}
+    </div>
+    <div class="sheet-foot"><button class="btn pink" id="done" ${done ? 'disabled' : ''}>${done ? '¡Enviado! Espera el resultado' : '¡Terminé!'}</button></div>
+    <div class="overlay" id="paused" hidden><div class="card"><p class="mid">PAUSA</p><p class="lead">Alex detuvo el reloj un momento.</p></div></div>`;
+  const inputs = [...view.querySelectorAll('.sheet .input')];
+  inputs.forEach((inp) => {
+    inp.addEventListener('input', () => {
+      pending['w' + inp.dataset.n] = inp.value.slice(0, 40);
+      inp.closest('.slot').classList.toggle('filled', !!inp.value.trim());
+      updateFilled();
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(flush, 350);
+    });
+    inp.addEventListener('blur', flush);
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nxt = inputs[+inp.dataset.i + 1];
+        if (nxt) nxt.focus(); else inp.blur();
+      }
+    });
+    inp.closest('.slot').classList.toggle('filled', !!inp.value.trim());
+  });
+  $('done').onclick = () => {
+    const filled = inputs.filter((i) => i.value.trim()).length;
+    const ask = document.createElement('div');
+    ask.className = 'overlay';
+    ask.innerHTML = `<div class="card"><p class="mid">¿YA TERMINASTE?</p><p class="lead">Llevas <b>${filled} de ${N_WORDS}</b>. Después ya no podrás cambiar tus respuestas.</p><button class="btn pink" id="yes">Sí, enviar</button><button class="btn ghost" id="no">Seguir escribiendo</button></div>`;
+    document.body.appendChild(ask);
+    ask.querySelector('#no').onclick = () => ask.remove();
+    ask.querySelector('#yes').onclick = async () => {
+      ask.remove();
+      flush();
+      inputs.forEach((i) => (i.disabled = true));
+      $('sheet').setAttribute('aria-disabled', 'true');
+      $('done').disabled = true;
+      $('done').textContent = '¡Enviado! Espera el resultado';
+      await room.saveAnswers(r, { _d: store.now() }).catch(() => {});
+      navigator.vibrate?.(30);
+    };
+  };
+  updateFilled();
+  tickTimer();
+  lockScreen(true);
+  navigator.vibrate?.([30, 60, 30]);
+  if (!done) setTimeout(() => inputs.find((i) => !i.value)?.focus({ preventScroll: true }), 300);
+}
+
+function updateFilled() {
+  const n = [...view.querySelectorAll('.sheet .input')].filter((i) => i.value.trim()).length;
+  if ($('filled')) $('filled').textContent = `${n} de ${N_WORDS} escritas`;
+}
+
+function flush() {
+  clearTimeout(saveTimer);
+  if (!sheetRound || !Object.keys(pending).length) return;
+  const patch = pending;
+  pending = {};
+  room.saveAnswers(sheetRound, patch).catch((e) => {
+    console.warn('No se guardó', e);
+    Object.assign(pending, patch);
+  });
+}
+
+function tickTimer() {
+  const t = $('timer');
+  if (!t || !sheetRound) return;
+  const rd = st.rounds?.[sheetRound];
+  const left = timeLeft(rd, store.now());
+  if (left === null) return;
+  t.textContent = fmtTime(left);
+  t.classList.toggle('warn', left <= 30000 && left > 0);
+  if ($('paused')) $('paused').hidden = rd?.status !== 'paused';
+  if (rd?.status === 'running' && left <= 0) {
+    // Se acabó el tiempo: se guarda lo último y se bloquea la hoja.
+    flush();
+    view.querySelectorAll('.sheet .input').forEach((i) => (i.disabled = true));
+    if ($('done') && !$('done').disabled) {
+      $('done').disabled = true;
+      $('done').textContent = '¡Tiempo! Se guardó lo que escribiste';
+      navigator.vibrate?.([80, 60, 80]);
+    }
+  }
+}
+
+async function lockScreen(on) {
+  try {
+    if (on && !wakeLock && 'wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen');
+    if (!on && wakeLock) { await wakeLock.release(); wakeLock = null; }
+  } catch {}
+}
+
+// ---------- Resultados ----------
+function hitsGrid(h) {
+  const hits = new Set(String(h || '').split(',').filter(Boolean).map(Number));
+  return `<div class="grid20">${Array.from({ length: N_WORDS }, (_, i) => `<i class="${hits.has(i + 1) ? 'hit' : ''}">${i + 1}</i>`).join('')}</div>`;
+}
+
+function afterOneScreen(stage) {
+  const res = st.results?.[store.uid];
+  const total = st.results?._meta?.count || 0;
+  if (!res || !res.p1) {
+    view.innerHTML = res
+      ? `<p class="mid" style="margin-top:20px">TE PERDISTE LA RONDA 1</p><p class="lead">No pasa nada: en la segunda ronda sí juegas.</p>`
+      : `<p class="mid pulse" style="margin-top:20px">CALIFICANDO…</p><p class="lead">Tu resultado sale en un momento.</p>`;
+    return;
+  }
+  const range = RANGES.findIndex((g) => res.r1 >= g.from && res.r1 <= g.to);
+  view.innerHTML = `
+    <p class="label" style="margin-top:8px">Tu ronda 1</p>
+    <p class="score">${res.r1}<small> / ${N_WORDS}</small></p>
+    <p class="lead"><b>${JOKES[range]}</b></p>
+    ${hitsGrid(res.h1)}
+    <p class="lead">Lugar <b>${res.place}</b> de ${total} · en verde, los números que acertaste.</p>
+    ${stage === 'code' ? '<div class="card"><p class="lead" style="margin:0">🔐 <b>Pon atención:</b> Joss está revelando el código secreto. Te va a servir en la segunda ronda.</p></div>' : ''}`;
+}
+
+function finalScreen() {
+  const res = st.results?.[store.uid];
+  const total = st.results?._meta?.count || 0;
+  if (!res) {
+    view.innerHTML = `<p class="mid pulse" style="margin-top:20px">CALIFICANDO…</p><p class="lead">Tu resultado sale en un momento.</p>`;
+    return;
+  }
+  const medal = res.place <= 3 ? ['', '🥇', '🥈', '🥉'][res.place] : '';
+  const gain = res.p1 && res.p2 ? res.gain : null;
+  view.innerHTML = `
+    <div class="bounce">${avatarSVG(me.avatar, { size: 120 })}</div>
+    <p class="place">${medal} LUGAR ${res.place} DE ${total}</p>
+    <div class="versus">
+      <div class="card"><p class="label">Ronda 1</p><p class="n">${res.p1 ? res.r1 : '—'}</p></div>
+      <div style="font-family:var(--display);font-size:28px;color:var(--lime)">→</div>
+      <div class="card" style="border-color:var(--pink)"><p class="label">Ronda 2</p><p class="n">${res.p2 ? res.r2 : '—'}</p></div>
+    </div>
+    <p class="lead">${gain === null ? `Total: <b>${res.total} puntos</b>.` : gain > 0 ? `Mejoraste <b>+${gain}</b> con el código. Total: <b>${res.total} puntos</b>.` : `Total: <b>${res.total} puntos</b>.`}</p>
+    <p class="lead" style="font-style:italic">Tu memoria no cambió. Cambió la forma de guardar.</p>
+    <p class="label" style="margin-top:12px">Tu código para llevar</p>
+    <div class="codes">${WORDS.map((w) => `<div><b>${w.n}</b><span><strong>${escapeHtml(w.word)}</strong>${escapeHtml(w.why)}</span></div>`).join('')}</div>
+    <div class="card"><p class="lead" style="margin:0">📅 En 7 días te preguntamos: <b>¿cuál era la 7?</b></p></div>`;
+}
+
+boot();
