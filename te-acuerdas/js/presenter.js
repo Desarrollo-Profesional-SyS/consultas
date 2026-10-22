@@ -1,13 +1,15 @@
 // Pantalla de Joss: la presentación completa más el "cerebro" del juego
 // (abre la sala, arranca y cierra las rondas, califica y publica resultados).
 import { openStore } from './store.js';
-import { Room, joinUrl, adminUrl, timeLeft } from './room.js';
+import { Room, joinUrl, adminUrl, notesUrl, timeLeft } from './room.js';
 import { Deck, notesOf, titleOf } from './deck.js';
 import { SLIDES } from './slides-data.js';
 import { renderLive, updateTimers, countUp } from './live.js';
-import { buildTable, stats, bestGain, stageFor, QUESTIONS, QUESTION_BY_SLIDE, summarize } from './game.js';
-import { sfx, setSound, soundOn, confetti } from './fx.js';
+import { buildTable, stats, bestGain, stageFor, QUESTIONS, QUESTION_BY_SLIDE, summarize, escapeHtml, playerExtras } from './game.js';
+import { sfx, setSound, soundOn, confetti, REACTIONS, reactionSound } from './fx.js';
 import { icon } from './icons.js';
+import { avatarSVG } from './avatars.js';
+import { GUION, guionText } from './guion.js';
 import { SOUND_DEFAULT, WORD_SECONDS } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -30,6 +32,8 @@ let lastSlideId = null;
 let wordTimer = null; // avance automático de las 20 palabras
 let wordsPaused = false;
 let chunkTimer = null; // cuenta regresiva del número de la prueba rápida
+let seenReactions = null; // última reacción vista de cada jugador
+let answerCounts = {}; // para sonar cuando llega un voto nuevo
 const notesChan = new BroadcastChannel('te-acuerdas-notas');
 
 function emptyData() {
@@ -117,6 +121,7 @@ async function useRoom(r, key, startIndex) {
   data.url = joinUrl(r.code);
   $('playerLink').textContent = data.url;
   $('adminLink').textContent = key ? adminUrl(r.code, key) : '(no disponible)';
+  $('notesLink').textContent = notesUrl(r.code);
   $('stepRoom').querySelector('p').textContent = `Sala ${r.code} lista.`;
   $('btnCreate').hidden = true;
   $('btnResume').hidden = true;
@@ -150,8 +155,11 @@ function recompute() {
   data.qstate = roomData.q || {};
   data.qs = {};
   for (const qid of Object.keys(QUESTIONS)) data.qs[qid] = summarize(qid, roomData.qa?.[qid], rows, roomData.qhide?.[qid]);
+  data.extras = playerExtras(roomData.qa || {});
   data.now = store.now();
   if (deck?.el) renderLive(deck.el, data);
+  playAnswerSounds();
+  showReactions(roomData.reactions || {});
   handleCmd(roomData.cmd);
   schedulePublish();
   postNotes();
@@ -161,9 +169,24 @@ function recompute() {
 function schedulePublish() {
   clearTimeout(publishTimer);
   publishTimer = setTimeout(() => {
-    const results = { _meta: { count: data.rows.length, avg1: round1(data.stats[1].avg), avg2: round1(data.stats[2].avg), played1: data.stats[1].count, played2: data.stats[2].count } };
+    const ex = data.extras || {};
+    const allOk = data.rows.reduce((s, r) => s + (ex[r.id]?.ok || 0), 0);
+    const allN = data.rows.reduce((s, r) => s + (ex[r.id]?.n || 0), 0);
+    const results = {
+      _meta: {
+        count: data.rows.length, avg1: round1(data.stats[1].avg), avg2: round1(data.stats[2].avg), played1: data.stats[1].count, played2: data.stats[2].count,
+        rateAvg: data.qs.rating?.avg != null ? round1(data.qs.rating.avg) : null,
+        chunkOk: data.qs.chunk?.ok?.length || 0,
+        mythsPct: allN ? Math.round((allOk / allN) * 100) : null,
+        quotes: (data.qs.cierre?.visible || []).slice(0, 6).map((a) => ({ name: a.name, avatar: a.avatar, v: a.v, area: a.area || '' })),
+      },
+    };
     for (const r of data.rows) {
-      results[r.id] = { r1: r.r1, r2: r.r2, total: r.total, place: r.place, h1: r.hits1.join(','), h2: r.hits2.join(','), gain: r.gain ?? 0, p1: r.played1, p2: r.played2 };
+      const e = ex[r.id] || {};
+      results[r.id] = {
+        r1: r.r1, r2: r.r2, total: r.total, place: r.place, h1: r.hits1.join(','), h2: r.hits2.join(','), gain: r.gain ?? 0, p1: r.played1, p2: r.played2,
+        rate: e.rate ?? null, mok: e.ok || 0, mn: e.n || 0, ch: e.chunk ? e.chunk.hits : null,
+      };
     }
     const json = JSON.stringify(results);
     if (json !== lastPublished) {
@@ -218,6 +241,7 @@ function startDeck(index) {
     lastCmd = roomData.cmd?.id ?? ''; // no repetir órdenes viejas al abrir
     deck.guard = guard;
     deck.addEventListener('enter', (e) => {
+      if (e.detail.transition === 'push' || e.detail.transition === 'fade') sfx.whoosh();
       renderLive(e.detail.el, data, { entering: true });
       resetWordTimer(e.detail.el, false);
     });
@@ -270,7 +294,9 @@ function onSlide(e) {
   syncQuestions(prev, slide.id);
   const stage = stageFor(slide.id, index, RETO_INDEX);
   const word = /^p\d\d$/.test(slide.id) ? parseInt(slide.id.slice(1), 10) : 0;
-  room.setState({ slide: slide.id, index, stage, word, total: SLIDES.length, q: QUESTION_BY_SLIDE[slide.id] || null, wordsPaused, at: store.now() });
+  const title = titleOf(slide).slice(0, 90);
+  const next = SLIDES[index + 1] ? titleOf(SLIDES[index + 1]).slice(0, 90) : '— Fin —';
+  room.setState({ slide: slide.id, index, stage, word, total: SLIDES.length, title, next, q: QUESTION_BY_SLIDE[slide.id] || null, wordsPaused, at: store.now() });
   save({ index });
   updateHud();
   postNotes();
@@ -284,7 +310,10 @@ function syncQuestions(prevId, nowId) {
   if (nowQ) {
     const q = QUESTIONS[nowQ];
     const st = data.qstate[nowQ];
-    if (nowId === q.slide && q.open !== 'manual' && !st?.closedAt && !st?.open) room.openQuestion(nowQ);
+    if (nowId === q.slide && q.open !== 'manual' && !st?.closedAt && !st?.open) {
+      room.openQuestion(nowQ);
+      sfx.chime();
+    }
   }
 }
 
@@ -293,8 +322,14 @@ function onStep(e) {
   if (instant || auto) return;
   const qid = QUESTION_BY_SLIDE[slide.id];
   const q = qid && QUESTIONS[qid];
-  if (q && slide.id === q.slide && q.close === order) room.closeQuestion(qid, { reveal: true });
+  if (q && slide.id === q.slide && q.close === order) {
+    room.closeQuestion(qid, { reveal: true });
+    sfx.tada();
+  }
   if (slide.id === 'chunk' && order === 1) startChunk();
+  if (slide.id === 'chunk-res') ({ 1: sfx.tada, 2: sfx.sad })[order]?.();
+  if (slide.id === 'comparativo' && order === 2) { sfx.drumroll(1); setTimeout(sfx.tada, 1050); }
+  if (slide.id === 'miller' && order === 1) sfx.pop();
 }
 
 // Prueba rápida: el número se ve 5 segundos con cuenta regresiva, se oculta solo y se abre la pregunta.
@@ -323,7 +358,11 @@ function finishChunk() {
   const cd = deck.el?.querySelector('[data-live="chunk-countdown"]');
   if (cd) cd.style.visibility = 'hidden';
   if (deck.current?.id === 'chunk' && deck.pendingSteps > 0) deck.next(); // oculta el número y muestra el resto
-  if (!data.qstate.chunk?.closedAt) room.openQuestion('chunk');
+  sfx.poof();
+  if (!data.qstate.chunk?.closedAt) {
+    room.openQuestion('chunk');
+    setTimeout(sfx.chime, 450);
+  }
 }
 
 function cancelChunk() {
@@ -387,16 +426,65 @@ function manualPrev() {
 
 function onBuilt(e) {
   const { node, instant } = e.detail;
-  if (node.id === 'word' && !instant) startWordClock(); // el reloj corre desde que se ven imagen y palabra
+  if (node.id === 'word' && !instant) { startWordClock(); sfx.pop(); } // el reloj corre desde que se ven imagen y palabra
   node.querySelectorAll?.('[data-live="cmp-avg"]').forEach((n) => (instant ? null : countUp(n)));
   if (instant) return;
   if (node.dataset.live === 'podium') {
     if (node.dataset.place === '1') {
       sfx.fanfare();
       confetti($('stage'));
-    } else sfx.pop();
+    } else sfx.tada();
   }
-  if (node.dataset.live === 'best-gain') sfx.pop();
+  if (node.dataset.live === 'best-gain') sfx.applause(1.2);
+}
+
+// ---------- Sonido cuando llegan votos y respuestas ----------
+function playAnswerSounds() {
+  const qid = QUESTION_BY_SLIDE[deck?.current?.id];
+  for (const [id, sm] of Object.entries(data.qs)) {
+    const before = answerCounts[id];
+    answerCounts[id] = sm.count;
+    if (id === qid && before !== undefined && sm.count > before) sfx.bloop();
+  }
+}
+
+// ---------- Reacciones: flotan sobre la diapositiva con su sonido ----------
+function reactionsAllowed() {
+  const id = deck?.current?.id || '';
+  if (/^(reto|p\d\d)$/.test(id)) return false; // no distraer mientras se memorizan las palabras
+  return ![1, 2].some((r) => data.rounds[r]?.status === 'running' || data.rounds[r]?.status === 'paused');
+}
+
+function showReactions(all) {
+  if (seenReactions === null || !deck) { seenReactions = Object.fromEntries(Object.entries(all).map(([k, v]) => [k, v?.t])); return; }
+  const byId = Object.fromEntries(data.rows.map((r) => [r.id, r]));
+  let shown = $('stage').querySelectorAll('.reaction').length;
+  for (const [uid, v] of Object.entries(all)) {
+    if (!v || seenReactions[uid] === v.t) continue;
+    seenReactions[uid] = v.t;
+    const who = byId[uid];
+    const re = REACTIONS.find((x) => x.id === v.r);
+    if (!who || !re || !reactionsAllowed() || store.now() - v.t > 8000 || shown >= 14) continue;
+    shown++;
+    spawnReaction(re, who);
+  }
+}
+
+function spawnReaction(re, who) {
+  const el = document.createElement('div');
+  el.className = 'reaction';
+  el.style.left = `${120 + Math.random() * 1600}px`;
+  el.innerHTML = `<span class="emo">${re.emoji}</span><span class="who">${avatarSVG(who.avatar, { size: 34, title: who.name })}<b>${escapeHtml(who.name)}</b></span>`;
+  $('stage').appendChild(el);
+  const drift = (Math.random() - 0.5) * 160;
+  const a = el.animate([
+    { transform: 'translate(0, 0) scale(.4)', opacity: 0 },
+    { transform: `translate(${drift * 0.3}px, -120px) scale(1.1)`, opacity: 1, offset: 0.15 },
+    { transform: `translate(${drift}px, -560px) scale(1)`, opacity: 1, offset: 0.8 },
+    { transform: `translate(${drift * 1.2}px, -680px) scale(.9)`, opacity: 0 },
+  ], { duration: 3400, easing: 'cubic-bezier(.2,.7,.3,1)' });
+  a.finished.then(() => el.remove()).catch(() => el.remove());
+  reactionSound(re.id);
 }
 
 // ---------- Controles ----------
@@ -443,7 +531,8 @@ function toggleSound() {
 }
 
 function openNotes() {
-  open(`notas.html${room ? `?s=${room.code}` : ''}`, 'te-acuerdas-notas', 'width=760,height=820');
+  const w = open(room ? notesUrl(room.code) : 'notas.html', 'te-acuerdas-notas', 'width=760,height=820');
+  if (!w) toast('Tu navegador bloqueó la ventana de notas. Permite las ventanas emergentes de esta página o abre el link de notas en tu celular o tablet (está en el menú, tecla M).', 7000);
   setTimeout(postNotes, 600);
 }
 
@@ -453,20 +542,22 @@ function updateHud() {
 }
 
 function postNotes() {
-  if (!deck?.current) return;
-  const i = deck.index;
+  const i = deck?.current ? deck.index : +$('startAt').value || 0;
+  const cur = SLIDES[i];
   const next = SLIDES[i + 1];
-  const r = ROUND_SLIDE[deck.current.id];
+  const r = ROUND_SLIDE[cur.id];
   notesChan.postMessage({
     type: 'slide',
     index: i,
     total: SLIDES.length,
-    title: titleOf(deck.current),
-    notes: notesOf(deck.current),
+    title: titleOf(cur),
+    notes: guionText(cur.id) || notesOf(cur),
+    guion: GUION[cur.id] || null,
     next: next ? titleOf(next) : '— Fin —',
+    wordsPaused,
     players: data.rows.length,
     round: r ? { r, ...(data.rounds[r] || {}) } : null,
-    serverOffset: store.now() - Date.now(),
+    serverOffset: store ? store.now() - Date.now() : 0,
   });
 }
 
@@ -492,6 +583,8 @@ $('hud').addEventListener('click', (e) => e.stopPropagation());
 $('hPrev').onclick = () => deck && manualPrev();
 $('hNext').onclick = () => deck && manualNext();
 $('hNotes').onclick = openNotes;
+$('btnNotes').onclick = openNotes;
+$('startAt').onchange = postNotes;
 $('hSound').onclick = toggleSound;
 $('hFull').onclick = toggleFull;
 $('hMenu').onclick = () => ($('setup').hidden = false);

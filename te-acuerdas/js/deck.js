@@ -75,7 +75,8 @@ export class Deck extends EventTarget {
     this.steps = steps;
     this.stepAt = 0;
     this.stage.appendChild(el);
-    this.dispatchEvent(new CustomEvent('enter', { detail: { el, slide: this.current, index: i, prevSlide } }));
+    const transition = prevEl ? (instant ? 'none' : prevEl.dataset.transition || 'push') : 'none';
+    this.dispatchEvent(new CustomEvent('enter', { detail: { el, slide: this.current, index: i, prevSlide, transition, final } }));
 
     if (final) {
       while (this.stepAt < this.steps.length) this.playStep(true);

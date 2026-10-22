@@ -1,5 +1,6 @@
 // Prueba completa en modo ensayo local: Joss + Alex + 3 celulares + 25 jugadores
-// de prueba recorren las 56 diapositivas, con capturas en tools/out/.
+// de prueba recorren las 57 diapositivas, con capturas en tools/out/. Revisa también
+// las notas de Joss, el panel de Alex, las reacciones y el PDF del recuerdo.
 //   npx http-server -p 8080 -c-1 .   (desde te-acuerdas/)
 //   node tools/e2e.mjs
 import { chromium } from 'playwright';
@@ -9,7 +10,7 @@ const OUT = new URL('./out/', import.meta.url).pathname;
 const errors = [];
 const checks = [];
 const b = await chromium.launch();
-const ctx = await b.newContext(); // misma sesión: comparten localStorage y BroadcastChannel
+const ctx = await b.newContext({ acceptDownloads: true }); // misma sesión: comparten localStorage y BroadcastChannel
 const watch = (p, who) => {
   p.on('pageerror', (e) => errors.push(`[${who}] ${e.message}`));
   p.on('console', (m) => { if (m.type() === 'error') errors.push(`[${who}] ${m.text()}`); });
@@ -27,13 +28,20 @@ await joss.click('#btnCreate');
 await joss.waitForSelector('#stepLinks:not([hidden])');
 const adminLink = await joss.textContent('#adminLink');
 const playerLink = await joss.textContent('#playerLink');
-const slideId = () => joss.evaluate(() => document.querySelector('#stage section:last-child')?.id);
+const slideId = () => joss.evaluate(() => document.querySelector('#stage section:last-of-type')?.id);
 const press = async (ms = 800) => { await joss.keyboard.press('ArrowRight'); await wait(ms); };
 async function goTo(id, ms = 800) {
   for (let i = 0; i < 30 && (await slideId()) !== id; i++) await press(ms);
   check((await slideId()) === id, `llegó a «${id}»`);
   await wait(700);
 }
+
+// Notas de Joss: se abren antes de empezar y muestran el guion
+const [notes] = await Promise.all([ctx.waitForEvent('page'), joss.click('#btnNotes')]);
+watch(notes, 'notas');
+await notes.waitForSelector('.line.joss', { timeout: 5000 }).catch(() => {});
+check(await notes.isVisible('.line.joss'), 'las notas muestran el guion de Joss antes de empezar');
+check(/notas\.html\?s=[A-Z]{4}/.test(await joss.textContent('#notesLink')), 'hay link de notas para el celular o la tablet');
 
 // Alex
 const alex = await ctx.newPage();
@@ -50,7 +58,7 @@ await goTo('sala');
 
 // 3 celulares entran en la sala
 const phones = [];
-for (const [name, av] of [['Rosbel', 3], ['Joss Jr', 8], ['Mariana', 13]]) {
+for (const [name, av, color] of [['Rosbel', 3, 0], ['Joss Jr', 8, 4], ['Mariana', 18, 8]]) {
   const p = await ctx.newPage();
   await p.setViewportSize({ width: 390, height: 844 });
   watch(p, name);
@@ -58,7 +66,9 @@ for (const [name, av] of [['Rosbel', 3], ['Joss Jr', 8], ['Mariana', 13]]) {
   await p.waitForSelector('.avatars button');
   await wait(400);
   if (name === 'Rosbel') await shot(p, '02-phone-join');
+  await p.click(`[data-c="${color}"]`);
   await p.click(`.avatars button[data-a="${av}"]`);
+  if (name === 'Rosbel') await shot(p, '02b-phone-join-color');
   await p.fill('#name', name);
   await p.click('#join');
   phones.push(p);
@@ -68,6 +78,22 @@ await alex.click('#addBots');
 await wait(10000);
 await shot(joss, '03-sala');
 await shot(phones[0], '04-phone-lobby');
+const avs = await joss.evaluate(() => JSON.parse(localStorage.getItem('te-acuerdas-ensayo') || '{}'));
+const room0 = Object.values(avs.rooms || {})[0] || {};
+const mine = Object.values(room0.players || {}).filter((p) => ['Rosbel', 'Joss Jr', 'Mariana'].includes(p.name)).map((p) => p.avatar);
+check(mine.length === 3 && mine.every((a) => a >= 32), `los avatares guardan cerebro + color (${mine.join(', ')})`);
+
+// Reacciones: desde un celular y de los jugadores de prueba
+check(await phones[0].isVisible('#reactbar [data-r="risa"]'), 'la barra de reacciones se ve en el celular');
+await phones[0].click('#reactbar [data-r="risa"]');
+await phones[1].click('#reactbar [data-r="boom"]');
+await wait(700);
+check((await joss.locator('#stage .reaction').count()) >= 1, 'la reacción del celular aparece en la pantalla de Joss');
+await shot(joss, '03b-reacciones');
+await alex.click('#botReact');
+await wait(2500);
+check((await joss.locator('#stage .reaction').count()) >= 2, 'las reacciones de prueba aparecen en pantalla');
+await shot(joss, '03c-reacciones-bots');
 
 // Calificar la memoria
 await goTo('despierta');
@@ -76,6 +102,13 @@ await shot(phones[0], '05-phone-rating');
 for (const [k, v] of [[0, 8], [1, 5], [2, 9]]) await phones[k].click(`[data-v="${v}"]`);
 await wait(6500);
 await shot(joss, '06-despierta');
+check((await notes.textContent('#title')).length > 0 && (await notes.isVisible('.line.joss')), 'las notas siguen la diapositiva');
+await shot(notes, '06b-notas');
+await alex.click('[data-tab="live"]');
+await wait(500);
+check(await alex.isVisible('.guion .line.alex'), 'el panel de Alex muestra su parte del guion');
+await shot(alex, '06c-alex-guion');
+await alex.click('[data-tab="rehearsal"]');
 check(/\d/.test(await joss.textContent('[data-live="rating-avg"]')), 'promedio de la calificación en pantalla');
 
 // Gancho: respuesta libre
@@ -179,7 +212,7 @@ await press(1400); // escribe
 check((await slideId()) === 'escribe', 'p20 → escribe con clic');
 await press(800); // arranca el reloj
 const r1 = [
-  ['sol', 'calsetines', '', 'coche', '', 'dado', '', '∞', '', '', 'windows', '', '', '', '', 'celular', 'birrete', 'INE', 'tapabocas', 'pies y manos'],
+  ['sol', 'calsetines', '', 'coche', '', 'dado', '', '∞', '', '', 'windows', '', '', '', '', 'celular', 'cohete', 'INE', 'tapabocas', 'pies y manos'],
   ['sol', 'calcetin', 'semaforo', '', 'estrella', '', '', '', '', 'manos', '', '', '', 'corazón', '', 'iphone', '', '', 'cubrebocas', 'manos'],
   ['el sol', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', 'manos y pies'],
 ];
@@ -215,7 +248,7 @@ await wait(800);
 
 // Ronda 2
 await press(900);
-const words = ['sol', 'calcetines', 'semaforo', 'carro', 'estrella', 'dado', 'arcoiris', 'infinito', 'bebe', 'manos', 'windows 11', 'reloj', 'martes', 'corazon', 'vestido', 'iphone', 'graduacion', 'credencial', 'cubrebocas', 'pies y manos'];
+const words = ['sol', 'calcetines', 'semaforo', 'carro', 'estrella', 'dado', 'arcoiris', 'infinito', 'bebe', 'manos', 'windows 11', 'reloj', 'martes', 'corazon', 'vestido', 'iphone', 'nave espacial', 'credencial', 'cubrebocas', 'pies y manos'];
 for (let k = 0; k < phones.length; k++) for (let n = 1; n <= 20; n++) if ((n + k) % 7 !== 0) await phones[k].fill(`#w${n}`, words[n - 1]);
 await wait(26000);
 await press(1800); // comparativo
@@ -241,16 +274,51 @@ await shot(joss, '39-muro');
 await goTo('llevar');
 await wait(1200);
 await shot(joss, '40-llevar');
+await goTo('resumen');
+await wait(2500);
+await shot(joss, '40b-resumen');
+check((await joss.locator('[data-live="summary-grid"] > *').count()) >= 20, 'el resumen final muestra a los jugadores');
 await shot(phones[0], '41-phone-final');
+await phones[0].locator('#btnPdf').scrollIntoViewIfNeeded();
+await shot(phones[0], '41b-phone-pdf');
+const [dl] = await Promise.all([phones[0].waitForEvent('download', { timeout: 60000 }), phones[0].click('#btnPdf')]);
+const pdfPath = `${OUT}recuerdo-Rosbel.pdf`;
+await dl.saveAs(pdfPath);
+const { statSync, readFileSync } = await import('node:fs');
+check(dl.suggestedFilename() === 'Te-acuerdas-Rosbel.pdf' && statSync(pdfPath).size > 100000 && readFileSync(pdfPath).subarray(0, 5).toString() === '%PDF-', `el celular descarga su recuerdo en PDF (${dl.suggestedFilename()}, ${Math.round(statSync(pdfPath).size / 1024)} KB)`);
 const total = await joss.evaluate(() => document.getElementById('hCount').textContent);
-check(/\/ 56$/.test(total), `la presentación tiene 56 diapositivas (${total})`);
+check(/\/ 57$/.test(total), `la presentación tiene 57 diapositivas (${total})`);
 
 // Control remoto desde el panel de Alex
 await alex.click('[data-tab="live"]');
 await wait(400);
 await alex.click('#prev');
 await wait(1500);
-check((await slideId()) === 'muro', 'el «Anterior» de Alex mueve la presentación');
+check((await slideId()) === 'llevar', 'el «Anterior» de Alex mueve la presentación');
+await alex.click('#next');
+await wait(1500);
+check((await slideId()) === 'resumen', 'el «Siguiente» de Alex mueve la presentación');
+await notes.click('#prev');
+await wait(1500);
+check((await slideId()) === 'llevar', 'el «Anterior» de las notas mueve la presentación');
+
+// Notas en otro aparato: siguen la sala sin la ventana de la presentación
+// (en ensayo se simula otro aparato cortando solo el canal directo con la presentación)
+const nl = await joss.evaluate(() => document.getElementById('notesLink').textContent);
+const remote = await ctx.newPage();
+watch(remote, 'notas-link');
+await remote.addInitScript(() => {
+  const BC = window.BroadcastChannel;
+  window.BroadcastChannel = function (name) { return new BC(name === 'te-acuerdas-notas' ? 'aislado' : name); };
+});
+await remote.setViewportSize({ width: 768, height: 1024 });
+await remote.goto(nl);
+await wait(2000);
+check(/Diapositiva 56 de 57/.test(await remote.textContent('#count')) && (await remote.isVisible('.line.joss')), 'las notas por link siguen la diapositiva sin la ventana emergente');
+await alex.click('#next');
+await wait(1500);
+check(/Diapositiva 57 de 57/.test(await remote.textContent('#count')), 'las notas por link cambian solas con la presentación');
+await shot(remote, '41c-notas-link');
 await alex.click('[data-tab="table"]');
 await wait(400);
 await shot(alex, '42-alex-table');

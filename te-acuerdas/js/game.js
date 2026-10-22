@@ -19,7 +19,7 @@ export const WORDS = [
   { n: 14, word: 'Corazón', why: '14 de febrero', accept: ['corazon', 'corazones'] },
   { n: 15, word: 'Vestido', why: 'Fiesta de XV años', accept: ['vestido', 'vestidos', 'vestido de xv'] },
   { n: 16, word: 'iPhone', why: 'El iPhone 16', accept: ['iphone', 'iphone 16', 'celular', 'telefono', 'smartphone', 'cel'] },
-  { n: 17, word: 'Graduación', why: 'A los 17 sales de la prepa', accept: ['graduacion', 'birrete', 'toga', 'diploma', 'gorro de graduacion', 'graduarse'] },
+  { n: 17, word: 'Cohete', why: 'Dieci-siete rima con co-hete', accept: ['cohete', 'cohetes', 'cohete espacial', 'cohetito', 'nave', 'nave espacial', 'rocket'] },
   { n: 18, word: 'Credencial', why: 'Mayoría de edad para votar', accept: ['credencial', 'credencial para votar', 'credencial de elector', 'ine', 'credencial ine', 'credencial del ine', 'ife'] },
   { n: 19, word: 'Cubrebocas', why: 'COVID-19', accept: ['cubrebocas', 'cubreboca', 'cubre bocas', 'tapabocas', 'mascarilla', 'barbijo'] },
   { n: 20, word: 'Pies y manos', why: 'Veinte dedos', accept: ['pies y manos', 'manos y pies'] },
@@ -212,6 +212,7 @@ export const STAGE_BY_SLIDE = {
   segunda: 'r2',
   comparativo: 'final',
   podio: 'final',
+  resumen: 'final',
 };
 for (let n = 1; n <= N_WORDS; n++) STAGE_BY_SLIDE['p' + String(n).padStart(2, '0')] = 'watch';
 
@@ -262,6 +263,27 @@ export function chunkScore(value) {
   let hits = 0;
   for (let i = 0; i < CHUNK_NUMBER.length; i++) if (d[i] === CHUNK_NUMBER[i]) hits++;
   return { hits, ok: d === CHUNK_NUMBER };
+}
+
+// Las preguntas con respuesta correcta (para el resumen y el recuerdo).
+export const SCORED_QUESTIONS = ['olvido', 'mito-1', 'mito-2', 'mito-3', 'mito-4'];
+
+// Por jugador: su calificación inicial, cuántas de las preguntas con respuesta
+// correcta le atinó y cómo le fue con el número. qa = { pregunta: { uid: { v } } }.
+export function playerExtras(qa = {}) {
+  const out = {};
+  const get = (uid) => (out[uid] ||= { rate: null, ok: 0, n: 0, chunk: null });
+  for (const [uid, a] of Object.entries(qa.rating || {})) if (a?.v != null) get(uid).rate = +a.v;
+  for (const qid of SCORED_QUESTIONS) {
+    for (const [uid, a] of Object.entries(qa[qid] || {})) {
+      if (!a?.v) continue;
+      const e = get(uid);
+      e.n++;
+      if (a.v === QUESTIONS[qid].correct) e.ok++;
+    }
+  }
+  for (const [uid, a] of Object.entries(qa.chunk || {})) if (a?.v) get(uid).chunk = chunkScore(a.v);
+  return out;
 }
 
 // Resumen de una pregunta para pantallas y panel. answers = { uid: { v, area, t } }.

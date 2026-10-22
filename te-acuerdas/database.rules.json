@@ -57,7 +57,7 @@
               ".validate": "newData.isString() && newData.val().length >= 1 && newData.val().length <= 24"
             },
             "avatar": {
-              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 16"
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() < 400"
             }
           }
         },
@@ -99,6 +99,20 @@
               "$other": {
                 ".validate": false
               }
+            }
+          }
+        },
+        "reactions": {
+          "$uid": {
+            ".write": "auth != null && root.child('rooms').child($room).child('owner').exists() && (auth.uid === $uid || root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())",
+            "r": {
+              ".validate": "newData.isString() && newData.val().length <= 12"
+            },
+            "t": {
+              ".validate": "newData.isNumber()"
+            },
+            "$other": {
+              ".validate": false
             }
           }
         }

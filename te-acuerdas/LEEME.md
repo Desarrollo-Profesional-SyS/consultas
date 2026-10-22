@@ -1,9 +1,9 @@
 # ¿Te acuerdas? — El juego
 
-La presentación «¿Te acuerdas?» convertida en un juego en vivo para unas 30 personas. Son **56 diapositivas**: las 55 de la presentación de Slides (versión 35, la fuente de verdad del diseño) y el muro de respuestas del cierre.
+La presentación «¿Te acuerdas?» convertida en un juego en vivo para unas 30 personas. Son **57 diapositivas**: las 55 de la presentación de Slides (versión 35, la fuente de verdad del diseño), el muro de respuestas del cierre y el resumen final «¡Gracias, cerebros!».
 
 - **Joss** presenta desde una sola pestaña. Al inicio aparece la sala con el QR, para que todos estén conectados desde la primera pregunta.
-- **Los participantes** escanean el QR, eligen avatar y nombre, y contestan en su celular (o en la compu) durante toda la sesión: preguntas en vivo, el número y las dos rondas de las 20 palabras.
+- **Los participantes** escanean el QR, eligen su cerebro (20 estilos), su color (10) y su nombre, y contestan en su celular (o en la compu) durante toda la sesión: preguntas en vivo, el número, las dos rondas de las 20 palabras y 6 reacciones con sonido. Al final descargan su **recuerdo en PDF**.
 - **Alex** tiene un panel para el reloj, las preguntas, la revisión de respuestas, la tabla y el control remoto de la presentación.
 
 Costo: **$0**. Usa GitHub Pages para la página y el plan gratuito de Firebase para el tiempo real (100 conexiones al mismo tiempo).
@@ -15,7 +15,7 @@ Costo: **$0**. Usa GitHub Pages para la página y el plan gratuito de Firebase p
 | `index.html` | Joss | La presentación completa y el control del juego |
 | `j.html` | Participantes | Entrar con avatar y nombre, contestar preguntas y las dos rondas |
 | `alex.html` | Alex | Reloj, preguntas, jugadores, revisión, tabla y ensayo |
-| `notas.html` | Joss | Ventana aparte (tecla **N**) con avisos, reloj y botones |
+| `notas.html` | Joss | El guion de Joss y Alex por diapositiva, en otra ventana (tecla **N**) o en otro aparato con su link |
 
 ## Lo que pasa en cada momento
 
@@ -35,19 +35,26 @@ Costo: **$0**. Usa GitHub Pages para la página y el plan gratuito de Firebase p
 | Las 20 otra vez… en desorden | Ronda 2 (3 min) | Reloj |
 | Antes y después | Su resultado | Promedios, mayor mejora y la calificación inicial |
 | Tu turno + Muro | Respuesta libre y área (opcional) | Muro con tarjetas de texto, área y nombre |
+| ¡Gracias, cerebros! (resumen) | Su resultado y el botón **Descargar mi recuerdo (PDF)** | Todos los avatares con sus palabras de la ronda 1 → 2 y los datos del grupo |
+
+En la pantalla, cada respuesta lleva el avatar y el **nombre** de quien la dio (burbujas, votos A-D y V/F, rangos de resultados), para ver quién lo hace bien.
+
+**Reacciones:** abajo en el celular hay 6 botones (😂 ¡Jajaja!, 👏 ¡Bravo!, 🤯 ¡Me explotó!, 🧠 ¡Cerebrito!, 😴 Zzz, 🎺 ¡Ups!). Salen flotando en la pantalla de Joss con el nombre de quien la mandó y un sonido chistoso. Se apagan mientras pasan las palabras y durante las rondas.
+
+**El recuerdo en PDF** (3 páginas, con su nombre, la fecha y su avatar): 1) su lugar, ronda 1 → ronda 2, los números que acertó y todas sus respuestas; 2) cómo jugó el grupo, con todos los avatares y el muro; 3) una guía corta (agrupa, repasa espaciado, recuerda sin ver, asocia), el código del 1 al 20 y el gancho de su área. Se arma en el mismo celular, sin servidor.
 
 Entre preguntas, el celular muestra el avatar y «Mira la pantalla»: nadie se queda en una pregunta vieja. Las preguntas no suman puntos al podio, que sigue siendo ronda 1 + ronda 2.
 
 ## Puesta en marcha
 
-Ya está hecha: el proyecto de Firebase `te-acuerdas` está configurado en `js/config.js`. Solo falta, si no se ha hecho, **pegar de nuevo las reglas** de [`database.rules.json`](database.rules.json) en Firebase (Realtime Database → Reglas → Publicar), porque ahora incluyen las preguntas en vivo.
+Ya está hecha: el proyecto de Firebase `te-acuerdas` está configurado en `js/config.js`. Solo falta **pegar de nuevo las reglas** de [`database.rules.json`](database.rules.json) en Firebase (Realtime Database → Reglas → Publicar), porque ahora incluyen las reacciones y los avatares con color. Sin ese paso, las reacciones no llegan y algunos avatares no se guardan.
 
 GitHub Pages publica la rama `claude/quirky-albattani-hw1yvk`:
 
 - **Joss:** <https://desarrollo-profesional-sys.github.io/consultas/te-acuerdas/>
 - **Participantes:** entran con el QR o con el link que Alex pega en el chat.
 
-Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final del link de Joss. Todo corre en su compu: cada pestaña de `j.html` es un «celular» y las rondas duran 20 segundos. En el panel de Alex, **Ensayo → Agregar jugadores de prueba**: los bots también votan, califican, escriben el número y mandan frases.
+Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final del link de Joss. Todo corre en su compu: cada pestaña de `j.html` es un «celular» y las rondas duran 20 segundos. En el panel de Alex, **Ensayo → Agregar jugadores de prueba**: los bots también votan, califican, escriben el número y mandan frases; **Reacciones de prueba** los pone a reaccionar 10 segundos.
 
 ## El día del evento
 
@@ -56,13 +63,14 @@ Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final
 1. Abre la página en Chrome y toca **Crear sala nueva**. Si hiciste pruebas, que sea una sala distinta a la del ensayo.
 2. Copia el **link del panel** y mándaselo a Alex por privado. No lo compartas con el grupo.
 3. Toca **▶ Empezar presentación** y comparte esa pestaña. Si quieres que se oigan los sonidos, activa «compartir audio de la pestaña».
-4. Opcional: tecla **N** para abrir las notas en otra ventana que no compartes. Ahí salen los avisos para ti y el botón de pausa de las palabras.
+4. Toca **Abrir mis notas (guion)** (o la tecla **N**): es otra ventana que no compartes, con lo que dice Joss y lo que dice Alex en cada diapositiva, avisos y botones. Si el navegador bloquea la ventana, abre en el celular o la tablet el link de **Tus notas en el celular o la tablet** (está en el menú): el guion cambia solo con cada diapositiva.
 
 **Alex**
 
 1. Abre el link del panel.
 2. En la diapositiva de la sala, toca **Copiar link para el chat** y pégalo en el chat de la videollamada.
-3. En **Preguntas** puedes abrir o cerrar cualquier pregunta a mano y **ocultar una respuesta de texto** antes de que salga en pantalla.
+3. En **En vivo** ve su parte del guion resaltada («TÚ (ALEX)»), mueve la presentación y pausa las palabras.
+4. En **Preguntas** puedes abrir o cerrar cualquier pregunta a mano y **ocultar una respuesta de texto** antes de que salga en pantalla.
 
 **Teclas de Joss**
 
@@ -72,7 +80,7 @@ Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final
 | ← | Anterior |
 | **P** | Pausa o reanuda el avance automático de las 20 palabras (también desde el panel de Alex y la ventana de notas) |
 | F | Pantalla completa |
-| N | Notas en otra ventana |
+| N | Notas con el guion en otra ventana |
 | S | Sonido sí / no |
 | M | Menú y links de la sala |
 
@@ -85,7 +93,7 @@ Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final
 ## Cómo se califica
 
 - **1 punto** por palabra escrita **en su número**. La tabla final suma ronda 1 + ronda 2 (máximo 40).
-- Se aceptan respuestas sin acentos, en plural o singular, con un error de dedo, y sinónimos (coche, INE, tapabocas, compu, celular, birrete, ∞…).
+- Se aceptan respuestas sin acentos, en plural o singular, con un error de dedo, y sinónimos (coche, INE, tapabocas, compu, celular, nave espacial, ∞…).
 - Si una respuesta se parece más a otra palabra de la lista, no cuenta. Por ejemplo, «manos» en la 20 no vale porque es la 10.
 - Alex puede marcar cualquier respuesta como buena o mala en **Revisar respuestas**. Se aplica a todos los que la escribieron.
 - **Empates:** gana quien sacó más en la ronda 2, y luego quien terminó primero.
@@ -95,6 +103,9 @@ Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final
 - **Duración de las rondas y de cada palabra:** `ROUND_SECONDS` y `WORD_SECONDS` en `js/config.js`.
 - **Palabras, sinónimos y explicaciones:** `WORDS` en `js/game.js`.
 - **Preguntas en vivo (textos, opciones, respuesta correcta, áreas):** `QUESTIONS` en `js/game.js`.
+- **Guion de Joss y Alex y ganchos por área:** `GUION` y `AREA_HOOKS` en `js/guion.js`.
+- **Cerebros y colores de los avatares:** `AVATARS` y `COLORS` en `js/avatars.js`. **Reacciones y sonidos:** `REACTIONS` y `sfx` en `js/fx.js`.
+- **El PDF del recuerdo:** `js/recuerdo.js`.
 - **Diapositivas:** edita `slides/<id>.html` (el orden está en `slides/deck.json`) y corre `node tools/build-slides.mjs`. Los elementos con `data-live="…"` los llena el juego con datos reales.
 
 ## Después del evento
@@ -105,7 +116,7 @@ El repositorio es público: cualquiera con la dirección puede ver el código. L
 
 ```bash
 cd te-acuerdas/tools && npm install   # solo herramientas; la página no necesita compilarse
-node vendor.mjs                       # vuelve a copiar Firebase, QR, fuentes e íconos
+node vendor.mjs                       # vuelve a copiar Firebase, jsPDF + html2canvas, QR, fuentes e íconos
 cd .. && npx http-server -p 8080 -c-1 .
-node tools/e2e.mjs                    # ensayo automático: Joss + Alex + 3 celulares + 25 bots, las 56 diapositivas
+node tools/e2e.mjs                    # ensayo automático: Joss + Alex + 3 celulares + 25 bots, las 57 diapositivas, notas, reacciones y PDF
 ```

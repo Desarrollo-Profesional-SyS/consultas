@@ -31,6 +31,22 @@ await build({
   outfile: join(app, 'vendor/firebase.js'),
 });
 
+// 1b. PDF del recuerdo: jsPDF (MIT) + html2canvas (MIT). Se carga solo al descargar.
+await build({
+  stdin: {
+    contents: `export { jsPDF } from 'jspdf'; export { default as html2canvas } from 'html2canvas';`,
+    resolveDir: here,
+    loader: 'js',
+  },
+  bundle: true,
+  format: 'esm',
+  minify: true,
+  target: 'es2019',
+  external: ['canvg', 'dompurify'],
+  legalComments: 'eof',
+  outfile: join(app, 'vendor/pdf.js'),
+});
+
 // 2. QR (MIT, Kazuhiko Arase).
 copyFileSync(join(nm, 'qrcode-generator/dist/qrcode.mjs'), join(app, 'vendor/qrcode.mjs'));
 
@@ -67,4 +83,4 @@ writeFileSync(
   `}\n`,
 );
 
-console.log('Listo: vendor/firebase.js, vendor/qrcode.mjs, fuentes e íconos.');
+console.log('Listo: vendor/firebase.js, vendor/pdf.js, vendor/qrcode.mjs, fuentes e íconos.');

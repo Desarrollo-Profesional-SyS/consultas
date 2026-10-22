@@ -1,5 +1,7 @@
-// 16 avatares: versiones de Memo (el cerebro de la presentación) en distintos
-// colores y con un accesorio cada uno. Se dibujan como SVG, sin imágenes.
+// Avatares: versiones de Memo (el cerebro de la presentación). Cada jugador elige
+// un cerebro (accesorio y expresión) y un color. Se dibujan como SVG, sin imágenes.
+// El avatar se guarda como un solo número: cerebro + 32 × (color + 1).
+// Los números menores que 32 son de la versión anterior: cerebro con su color de siempre.
 
 const INK = '#07030D';
 const CREAM = '#FFF4E0';
@@ -13,7 +15,15 @@ const BODIES = [
   ['#FFD23F', '#C99A00'], // amarillo
   ['#5EE6A8', '#1FA86C'], // menta
   ['#FF6B5E', '#CC3A2D'], // coral
+  ['#8C9BFF', '#5566D9'], // azul
+  ['#F3E6CF', '#C9AE84'], // hueso
 ];
+
+export const COLORS = [
+  { name: 'Rosa', body: 0 }, { name: 'Lima', body: 1 }, { name: 'Cielo', body: 2 }, { name: 'Naranja', body: 3 },
+  { name: 'Lila', body: 4 }, { name: 'Amarillo', body: 5 }, { name: 'Menta', body: 6 }, { name: 'Coral', body: 7 },
+  { name: 'Azul', body: 8 }, { name: 'Hueso', body: 9 },
+].map((c) => ({ ...c, hex: BODIES[c.body][0] }));
 
 export const AVATARS = [
   { name: 'Memo', body: 0, acc: 'none', eyes: 'classic', mouth: 'grin' },
@@ -32,6 +42,10 @@ export const AVATARS = [
   { name: 'Aureola', body: 4, acc: 'halo', eyes: 'happy', mouth: 'grin' },
   { name: 'Chef', body: 6, acc: 'chef', eyes: 'classic', mouth: 'grin' },
   { name: 'Vaquero', body: 5, acc: 'cowboy', eyes: 'classic', mouth: 'tongue' },
+  { name: 'Birrete', body: 8, acc: 'grad', eyes: 'happy', mouth: 'grin' },
+  { name: 'Pirata', body: 7, acc: 'pirate', eyes: 'classic', mouth: 'tongue' },
+  { name: 'Gatito', body: 9, acc: 'cat', eyes: 'happy', mouth: 'open' },
+  { name: 'Antenas', body: 6, acc: 'antennae', eyes: 'classic', mouth: 'grin' },
 ];
 
 const LOBES = [
@@ -82,16 +96,33 @@ const ACC = {
   horns: `<path d="M120 76 Q96 6 136 -22 Q140 28 172 56 Z" fill="#FF3E8E" ${S}/><path d="M280 72 Q306 2 268 -26 Q262 24 232 52 Z" fill="#FF3E8E" ${S}/>`,
   halo: `<ellipse cx="204" cy="-6" rx="86" ry="24" fill="none" stroke="${INK}" stroke-width="26"/><ellipse cx="204" cy="-6" rx="86" ry="24" fill="none" stroke="#FFD23F" stroke-width="12"/>`,
   chef: `<g fill="${CREAM}" ${S}><circle cx="148" cy="20" r="44"/><circle cx="252" cy="20" r="44"/><circle cx="200" cy="-10" r="50"/><rect x="120" y="30" width="160" height="70" rx="10"/></g><path d="M140 34 V96 M200 34 V96 M260 34 V96" stroke="${INK}" stroke-width="5" opacity=".3"/>`,
+  grad: `<path d="M130 70 V108 Q205 132 280 108 V70 Z" fill="#2A1745" ${S}/><path d="M80 52 L205 4 L330 52 L205 100 Z" fill="#160A26" ${S}/><path d="M205 52 L300 74 L304 124" fill="none" stroke="${INK}" stroke-width="6"/><path d="M296 120 h18 l-4 34 h-10 Z" fill="#C6F432" stroke="${INK}" stroke-width="5"/><circle cx="205" cy="52" r="9" fill="#C6F432" stroke="${INK}" stroke-width="5"/>`,
+  pirate: `<path d="M96 112 C104 6 306 6 314 112 Q205 84 96 112 Z" fill="#FF3E8E" ${S}/><circle cx="160" cy="62" r="7" fill="${CREAM}"/><circle cx="206" cy="44" r="7" fill="${CREAM}"/><circle cx="254" cy="60" r="7" fill="${CREAM}"/><path d="M308 96 l40 -10 l-12 34 Z" fill="#FF3E8E" ${S}/><path d="M118 132 L330 200" stroke="${INK}" stroke-width="8"/><ellipse cx="254" cy="178" rx="38" ry="32" fill="${INK}"/>`,
+  cat: `<path d="M86 104 Q205 40 324 104" fill="none" stroke="${INK}" stroke-width="16" stroke-linecap="round"/><path d="M112 96 L128 -6 L196 58 Z" fill="#2A1745" ${S}/><path d="M214 58 L282 -6 L298 96 Z" fill="#2A1745" ${S}/><path d="M134 72 L140 22 L176 56 Z" fill="#FF7BB0"/><path d="M234 56 L270 22 L276 72 Z" fill="#FF7BB0"/><path d="M196 252 l-34 -6 M196 260 l-36 6 M226 252 l34 -6 M226 260 l36 6" stroke="${INK}" stroke-width="5" stroke-linecap="round"/>`,
+  antennae: `<path d="M160 70 Q140 20 112 -10" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M250 64 Q272 14 300 -14" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><circle cx="110" cy="-14" r="20" fill="#C6F432" ${S}/><circle cx="302" cy="-18" r="20" fill="#FF3E8E" ${S}/>`,
   cowboy: `<ellipse cx="200" cy="92" rx="190" ry="34" fill="#C96E00" ${S}/><path d="M118 92 C118 -40 282 -40 282 92 Z" fill="#FF9F1C" ${S}/><path d="M122 70 H278" stroke="#FF3E8E" stroke-width="16"/><path d="M200 6 Q200 30 200 50" stroke="${INK}" stroke-width="7" opacity=".35"/>`,
 };
 
 const cache = new Map();
 
+export const STYLE_COUNT = AVATARS.length;
+export const COLOR_COUNT = COLORS.length;
+export const encodeAvatar = (style, color) => style + 32 * (color + 1);
+
+// número guardado → { style, color } (color = null: el de siempre de ese cerebro)
+export function decodeAvatar(v) {
+  const n = Math.max(0, Math.floor(+v || 0));
+  const style = (n % 32) % STYLE_COUNT;
+  const color = n >= 32 ? (Math.floor(n / 32) - 1) % COLOR_COUNT : null;
+  return { style, color };
+}
+
 export function avatarSVG(i, { size = 96, title = '' } = {}) {
-  const a = AVATARS[((i % AVATARS.length) + AVATARS.length) % AVATARS.length];
-  const key = `${i}`;
+  const { style, color } = decodeAvatar(i);
+  const a = AVATARS[style];
+  const key = `${style}-${color}`;
   if (!cache.has(key)) {
-    const [fill, fold] = BODIES[a.body];
+    const [fill, fold] = BODIES[color === null ? a.body : COLORS[color].body];
     // Lo que va sobre la cabeza se dibuja después; los lentes y el bigote, sobre la cara.
     cache.set(key, brain(fill, fold) + eyes(a.eyes) + mouth(a.mouth) + ACC[a.acc]);
   }
@@ -100,3 +131,7 @@ export function avatarSVG(i, { size = 96, title = '' } = {}) {
 }
 
 export const AVATAR_COUNT = AVATARS.length;
+
+export function randomAvatar(rand = Math.random) {
+  return encodeAvatar(Math.floor(rand() * STYLE_COUNT), Math.floor(rand() * COLOR_COUNT));
+}

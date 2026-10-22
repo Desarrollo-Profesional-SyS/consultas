@@ -4,7 +4,9 @@ import { openStore } from './store.js';
 import { Room, joinUrl, timeLeft, isOpen } from './room.js';
 import { SLIDES } from './slides-data.js';
 import { notesOf, titleOf } from './deck.js';
-import { avatarSVG, AVATAR_COUNT } from './avatars.js';
+import { GUION } from './guion.js';
+import { avatarSVG, randomAvatar } from './avatars.js';
+import { REACTIONS } from './fx.js';
 import { WORDS, N_WORDS, buildTable, stats, isCorrect, autoVerdict, answerKey, botSheet, botAnswer, fmtTime, escapeHtml, norm, QUESTIONS, QUESTION_BY_SLIDE, summarize } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -123,7 +125,7 @@ function renderLive() {
       <div class="card now-slide">
         <p class="kicker">En pantalla · ${idx + 1} de ${SLIDES.length}</p>
         <h2>${escapeHtml(titles[idx])}</h2>
-        ${notesOf(slide) ? `<div class="notes">${escapeHtml(notesOf(slide))}</div>` : ''}
+        ${guionHtml(slide.id)}
         ${liveQuestionCard(slide.id)}
         ${/^(reto|p\d\d)$/.test(slide.id) ? `<div class="row"><button class="btn small ${data.state?.wordsPaused ? '' : 'cream'}" id="words">${data.state?.wordsPaused ? '▶ Reanudar avance de palabras' : '⏸ Pausar avance de palabras'}</button><span class="muted">Igual que la tecla P de Joss.</span></div>` : ''}
         <p class="muted">Sigue: ${escapeHtml(titles[idx + 1] || '— fin —')}</p>
@@ -185,6 +187,17 @@ function tick() {
       t.classList.toggle('warn', left > 0 && left <= 30000);
     }
   }
+}
+
+// ---------- Guion ----------
+function guionHtml(id) {
+  const g = GUION[id];
+  if (!g) return notesOf(SLIDES.find((s) => s.id === id) || SLIDES[0]) ? `<div class="notes">${escapeHtml(notesOf(SLIDES.find((s) => s.id === id)))}</div>` : '';
+  return `<div class="guion">
+    ${g.alex ? `<div class="line alex"><b>TÚ (ALEX)${g.t ? ' · ' + escapeHtml(g.t) : ''}</b>${escapeHtml(g.alex)}</div>` : ''}
+    ${g.joss ? `<div class="line joss"><b>JOSS</b>${escapeHtml(g.joss)}</div>` : ''}
+    ${g.tip ? `<div class="line tip"><b>CÓMO FUNCIONA</b>${escapeHtml(g.tip)}</div>` : ''}
+  </div>`;
 }
 
 // ---------- Preguntas en vivo ----------
@@ -363,6 +376,7 @@ function renderRehearsal() {
         <div class="row" style="margin-top:12px">
           <button class="btn" id="addBots" ${bots.length ? 'disabled' : ''}>Agregar ${BOT_NAMES.length} jugadores de prueba</button>
           <button class="btn dark" id="delBots" ${bots.length ? '' : 'disabled'}>Quitar jugadores de prueba (${bots.length})</button>
+          <button class="btn cream" id="botReact" ${bots.length ? '' : 'disabled'}>Reacciones de prueba (10 s)</button>
         </div>
       </div>
       <div class="card">
@@ -372,12 +386,22 @@ function renderRehearsal() {
       </div>
     </div>`;
   $('addBots').onclick = addBots;
+  $('botReact').onclick = () => {
+    for (let t = 0; t < 10000; t += 450) {
+      botTimers.push(setTimeout(() => {
+        const [id] = bots[Math.floor(Math.random() * bots.length)];
+        room.react(REACTIONS[Math.floor(Math.random() * REACTIONS.length)].id, id);
+      }, t));
+    }
+    toast('Los jugadores de prueba están reaccionando');
+  };
   $('delBots').onclick = async () => {
     const patch = {};
     for (const [id] of bots) {
       patch[`players/${id}`] = null;
       patch[`answers/1/${id}`] = null;
       patch[`answers/2/${id}`] = null;
+      patch[`reactions/${id}`] = null;
     }
     await store.update(room.p(), patch);
     toast('Jugadores de prueba fuera');
@@ -394,7 +418,7 @@ function addBots() {
   BOT_NAMES.forEach((name, i) => {
     const id = `bot-${String(i + 1).padStart(2, '0')}`;
     botTimers.push(setTimeout(() => {
-      store.update(room.p(`players/${id}`), { name, avatar: (i * 7) % AVATAR_COUNT, joinedAt: store.now(), online: true, bot: true });
+      store.update(room.p(`players/${id}`), { name, avatar: randomAvatar(), joinedAt: store.now(), online: true, bot: true });
     }, 250 + i * 350 + Math.random() * 300));
   });
   toast('Entrando jugadores de prueba…');

@@ -2,8 +2,9 @@
 // las preguntas en vivo, ver la pantalla mientras pasan las palabras, contestar
 // las dos rondas y ver su lugar.
 import { openStore } from './store.js';
+import { REACTIONS } from './fx.js';
 import { Room, timeLeft, isOpen } from './room.js';
-import { avatarSVG, AVATAR_COUNT } from './avatars.js';
+import { avatarSVG, AVATARS, COLORS, encodeAvatar, decodeAvatar, randomAvatar } from './avatars.js';
 import { WORDS, N_WORDS, RANGES, QUESTIONS, CHUNK_NUMBER, chunkScore, clampName, fmtTime, escapeHtml } from './game.js';
 
 const $ = (id) => document.getElementById(id);
@@ -74,12 +75,46 @@ function askCode(msg = '') {
   };
 }
 
+// ---------- Reacciones ----------
+let reactCool = false;
+function setupReactions() {
+  const bar = $('reactbar');
+  bar.innerHTML = REACTIONS.map((r) => `<button type="button" data-r="${r.id}" aria-label="${r.label}"><span>${r.emoji}</span>${r.label}</button>`).join('');
+  bar.querySelectorAll('[data-r]').forEach((b) => {
+    b.onclick = () => {
+      if (reactCool) return;
+      reactCool = true;
+      bar.classList.add('cool');
+      setTimeout(() => { reactCool = false; bar.classList.remove('cool'); }, 1500);
+      room.react(b.dataset.r).catch(() => {});
+      navigator.vibrate?.(15);
+      const r = b.getBoundingClientRect();
+      const f = document.createElement('div');
+      f.className = 'fly';
+      f.textContent = b.querySelector('span').textContent;
+      f.style.left = `${r.left + r.width / 2 - 21}px`;
+      f.style.top = `${r.top - 30}px`;
+      document.body.appendChild(f);
+      setTimeout(() => f.remove(), 1000);
+    };
+  });
+}
+
+// La barra se ve cuando ya entraste, salvo mientras pasan las palabras o en una ronda.
+function showReactions(on) {
+  const bar = $('reactbar');
+  if (on && !bar.childElementCount) setupReactions();
+  bar.hidden = !on;
+}
+
 // ---------- Qué pantalla toca ----------
 function render() {
   const mineP = st.players?.[store.uid];
   me = mineP?.name ? { name: mineP.name, avatar: mineP.avatar ?? 0 } : null;
   $('me').innerHTML = me && !editing ? `${avatarSVG(me.avatar, { size: 36 })}<span>${escapeHtml(me.name)}</span>` : room ? `<span class="pill">SALA ${room.code}</span>` : '';
 
+  const roundOpen = [1, 2].some((r) => isOpen(st.rounds?.[r]));
+  showReactions(!!me && !editing && !st.kicked?.[store.uid] && !roundOpen && st.state?.stage !== 'watch');
   if (st.kicked?.[store.uid]) return show('kicked', kickedScreen);
   if (!me || editing) return show(`join${editing ? '-edit' : ''}`, joinScreen);
 
@@ -99,7 +134,7 @@ function render() {
   const res = st.results?.[store.uid];
 
   if (s2 === 'closed' || stage === 'final') {
-    if (s2 === 'closed' || s1 === 'closed') return show(`final-${!!res}-${res?.r1}-${res?.r2}-${res?.place}-${st.results?._meta?.count}`, finalScreen);
+    if (s2 === 'closed' || s1 === 'closed') return show(`final-${!!res}-${res?.r1}-${res?.r2}-${res?.place}-${st.results?._meta?.count}-${stage === 'final'}`, finalScreen);
   }
   if (stage === 'r2') return show('ready-2', () => readyScreen(2));
   if (s1 === 'closed' && (stage === 'r1' || stage === 'after1' || stage === 'code')) {
@@ -136,32 +171,54 @@ function show(key, fn, sticky = false, soft = false) {
 // ---------- Entrar ----------
 function joinScreen() {
   if (draft.avatar === null) {
-    draft = me ? { name: me.name, avatar: me.avatar } : { name: '', avatar: Math.floor(Math.random() * AVATAR_COUNT) };
+    draft = me ? { name: me.name, avatar: me.avatar } : { name: '', avatar: randomAvatar() };
   }
+  let { style, color } = decodeAvatar(draft.avatar);
+  if (color === null) color = COLORS.findIndex((c) => c.body === AVATARS[style].body); // avatar de la versión anterior
+  const styles = () => AVATARS.map((a, i) => `<button type="button" data-a="${i}" aria-pressed="${i === style}" aria-label="${a.name}">${avatarSVG(encodeAvatar(i, color), { size: 72 })}</button>`).join('');
   view.innerHTML = `
     <div class="bounce" id="preview">${avatarSVG(draft.avatar, { size: 120 })}</div>
     <div class="field" style="text-align:left">
-      <p class="label">1. Elige tu avatar</p>
-      <div class="avatars" role="group" aria-label="Avatares">
-        ${Array.from({ length: AVATAR_COUNT }, (_, i) => `<button type="button" data-a="${i}" aria-pressed="${i === draft.avatar}">${avatarSVG(i, { size: 80 })}</button>`).join('')}
+      <p class="label">1. Elige tu cerebro</p>
+      <div class="avatars" id="styles" role="group" aria-label="Cerebros">${styles()}</div>
+    </div>
+    <div class="field" style="text-align:left">
+      <p class="label">2. Elige tu color</p>
+      <div class="swatches" role="group" aria-label="Colores">
+        ${COLORS.map((c, k) => `<button type="button" data-c="${k}" aria-pressed="${k === color}" aria-label="${c.name}" style="background:${c.hex}"></button>`).join('')}
       </div>
     </div>
     <div class="field" style="text-align:left">
-      <label class="label" for="name">2. Tu nombre</label>
+      <label class="label" for="name">3. Tu nombre</label>
       <input class="input" id="name" maxlength="18" autocomplete="nickname" enterkeyhint="go" placeholder="Como te dicen en la ofi" value="${escapeHtml(draft.name)}">
-      <span class="hint-text">Así vas a salir en la pantalla y en la tabla.</span>
+      <span class="hint-text">Así vas a salir en la pantalla, en la tabla y en tu recuerdo.</span>
     </div>
-    <p class="lead" style="font-size:16px">Durante toda la sesión vas a contestar aquí: votaciones, un número, tu opinión y el reto de las 20 palabras.</p>
+    <p class="lead" style="font-size:16px">Durante toda la sesión vas a contestar aquí: votaciones, un número, tu opinión, reacciones y el reto de las 20 palabras.</p>
     <button class="btn" id="join" style="font-size:22px;min-height:60px">${editing ? 'Guardar cambios' : '¡Entrar al juego!'}</button>
     ${editing ? '<button class="btn ghost" id="cancel">Cancelar</button>' : ''}`;
-  view.querySelectorAll('.avatars button').forEach((b) => {
+  const update = () => {
+    draft.avatar = encodeAvatar(style, color);
+    $('preview').innerHTML = avatarSVG(draft.avatar, { size: 120 });
+    navigator.vibrate?.(10);
+  };
+  const bindStyles = () => view.querySelectorAll('#styles button').forEach((b) => {
     b.onclick = () => {
-      draft.avatar = +b.dataset.a;
-      view.querySelectorAll('.avatars button').forEach((x) => x.setAttribute('aria-pressed', x === b));
-      $('preview').innerHTML = avatarSVG(draft.avatar, { size: 120 });
-      navigator.vibrate?.(10);
+      style = +b.dataset.a;
+      view.querySelectorAll('#styles button').forEach((x) => x.setAttribute('aria-pressed', x === b));
+      update();
     };
   });
+  bindStyles();
+  view.querySelectorAll('[data-c]').forEach((b) => {
+    b.onclick = () => {
+      color = +b.dataset.c;
+      view.querySelectorAll('[data-c]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+      $('styles').innerHTML = styles();
+      bindStyles();
+      update();
+    };
+  });
+  draft.avatar = encodeAvatar(style, color);
   const name = $('name');
   name.oninput = () => { draft.name = name.value; };
   name.onkeydown = (e) => { if (e.key === 'Enter') $('join').click(); };
@@ -524,9 +581,56 @@ function finalScreen() {
     </div>
     <p class="lead">${gain === null ? `Total: <b>${res.total} puntos</b>.` : gain > 0 ? `Mejoraste <b>+${gain}</b> con el código. Total: <b>${res.total} puntos</b>.` : `Total: <b>${res.total} puntos</b>.`}</p>
     <p class="lead" style="font-style:italic">Tu memoria no cambió. Cambió la forma de guardar.</p>
+    <div class="card recuerdo${st.state?.stage === 'final' ? ' pop' : ''}">
+      <p class="lead" style="margin:0">📲 <b>Tu recuerdo en PDF</b>: tu avatar, tus respuestas, cómo jugó el grupo y una guía corta para usar lo aprendido.</p>
+      <button class="btn pink" id="btnPdf">Descargar mi recuerdo (PDF)</button>
+      ${st.state?.stage === 'final' ? '' : '<p class="label" style="margin:0">Al final de la sesión se completa con tus últimas respuestas.</p>'}
+      <p class="label" id="pdfAlt" hidden style="margin:0">¿No se descargó? <a href="#" id="pdfOpen">Ábrelo aquí</a> y guárdalo o compártelo.</p>
+    </div>
     <p class="label" style="margin-top:12px">Tu código para llevar</p>
     <div class="codes">${WORDS.map((w) => `<div><b>${w.n}</b><span><strong>${escapeHtml(w.word)}</strong>${escapeHtml(w.why)}</span></div>`).join('')}</div>
     <div class="card"><p class="lead" style="margin:0">📅 En 7 días te preguntamos: <b>¿cuál era la 7?</b></p></div>`;
+  $('btnPdf').onclick = downloadPdf;
+  if (!pdfReady) pdfReady = import('../vendor/pdf.js').catch(() => null); // se precarga para que el botón responda rápido
+}
+
+// Datos del recuerdo: lo mío, la tabla del grupo y mis respuestas en vivo.
+function recuerdoData() {
+  const results = st.results || {};
+  const players = Object.entries(st.players || {})
+    .filter(([id, p]) => p?.name && !st.kicked?.[id])
+    .map(([id, p]) => ({ id, name: p.name, avatar: p.avatar ?? 0, ...(results[id] || {}) }))
+    .sort((a, b) => (a.place || 999) - (b.place || 999) || a.name.localeCompare(b.name, 'es'));
+  return { me, uid: store.uid, res: results[store.uid] || {}, meta: results._meta || {}, players, qa: { ...st.qa } };
+}
+
+let pdfBusy = false;
+let pdfReady = null;
+async function downloadPdf() {
+  if (pdfBusy) return;
+  pdfBusy = true;
+  const btn = $('btnPdf');
+  btn.disabled = true;
+  btn.textContent = 'Armando tu recuerdo…';
+  try {
+    const { downloadRecuerdo, fechaLarga } = await import('./recuerdo.js');
+    const out = await downloadRecuerdo({ ...recuerdoData(), fecha: fechaLarga() });
+    toast('¡Listo! Revisa tus descargas 📄', 3000);
+    const alt = $('pdfAlt');
+    if (alt && out.url) {
+      alt.hidden = false;
+      $('pdfOpen').onclick = (e) => { e.preventDefault(); window.open(out.url, '_blank'); };
+    }
+  } catch (e) {
+    console.error(e);
+    toast('No se pudo armar el PDF. Intenta otra vez.', 3000);
+  } finally {
+    pdfBusy = false;
+    if ($('btnPdf')) {
+      $('btnPdf').disabled = false;
+      $('btnPdf').textContent = 'Descargar otra vez (PDF)';
+    }
+  }
 }
 
 boot();

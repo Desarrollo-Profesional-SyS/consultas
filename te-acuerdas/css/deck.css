@@ -31,7 +31,8 @@ html, body { height: 100%; overflow: hidden; background: var(--ink); }
 .av { display: block; flex: none; }
 .lobby-chip { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 86px; }
 .lobby-chip span { font-size: 19px; font-weight: 800; color: var(--cream); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; }
-.range-chip { width: 52px; height: 52px; }
+.range-chip { display: flex; flex-direction: row; align-items: center; gap: 3px; background: rgba(255,244,224,.14); border-radius: 999px; padding: 1px 8px 1px 1px; max-width: 100px; }
+.range-chip span { font-size: 17px; font-weight: 800; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
 
 /* Controles flotantes (aparecen al mover el mouse) */
 #hud {
@@ -51,6 +52,12 @@ html, body { height: 100%; overflow: hidden; background: var(--ink); }
   padding: 8px 16px; border-radius: 999px; border: 2px solid var(--ink); z-index: 60; opacity: 0; transition: opacity .25s; pointer-events: none;
 }
 #hint.show { opacity: .95; }
+
+/* Reacciones de los celulares */
+.reaction { position: absolute; top: 1000px; z-index: 35; display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+.reaction .emo { font-size: 96px; line-height: 1; filter: drop-shadow(5px 5px 0 #07030D); font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
+.reaction .who { display: flex; align-items: center; gap: 6px; background: #FFF4E0; border: 3px solid #07030D; border-radius: 999px; padding: 2px 14px 2px 2px; box-shadow: 4px 4px 0 #07030D; }
+.reaction .who b { font-size: 24px; color: #160A26; font-family: Rubik, Arial, sans-serif; white-space: nowrap; }
 
 canvas.confetti { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; z-index: 40; }
 

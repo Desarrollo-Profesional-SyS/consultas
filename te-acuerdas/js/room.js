@@ -15,6 +15,7 @@
 //   q/{pregunta} { open, openedAt, closedAt, revealed }   preguntas en vivo
 //   qa/{pregunta}/{uid} { v, area?, t }                    un voto o respuesta por persona
 //   qhide/{pregunta}/{uid} true                            respuestas de texto que Alex ocultó
+//   reactions/{uid} { r, t }                                la última reacción de cada jugador
 import { ROUND_SECONDS } from './config.js';
 import { shuffledOrder, clampName, answerKey } from './game.js';
 
@@ -138,6 +139,10 @@ export class Room {
     return this.store.set(this.p(`qa/${qid}/${uid}`), { v: value, ...extra, t: this.store.now() });
   }
 
+  react(r, uid = this.store.uid) {
+    return this.store.set(this.p(`reactions/${uid}`), { r, t: this.store.now() });
+  }
+
   // ---------- Jugadores ----------
   join(name, avatar, extra = {}) {
     return this.store.update(this.p(`players/${this.store.uid}`), {
@@ -162,6 +167,13 @@ export class Room {
 
 export function joinUrl(code) {
   const u = new URL('j.html', location.href);
+  u.search = `?s=${code}`;
+  if (new URLSearchParams(location.search).has('ensayo')) u.search += '&ensayo';
+  return u.toString();
+}
+
+export function notesUrl(code) {
+  const u = new URL('notas.html', location.href);
   u.search = `?s=${code}`;
   if (new URLSearchParams(location.search).has('ensayo')) u.search += '&ensayo';
   return u.toString();

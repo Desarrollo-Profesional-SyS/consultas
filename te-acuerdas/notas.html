@@ -10,7 +10,14 @@
 <style>
   body { min-height: 100vh; }
   .wrap { padding: 20px; display: flex; flex-direction: column; gap: 14px; max-width: 900px; margin: 0 auto; }
-  #notes { white-space: pre-wrap; font-size: 22px; line-height: 1.55; color: var(--cream); background: var(--plum); border: 3px solid var(--grape); border-radius: 18px; padding: 18px; }
+  #notes { display: flex; flex-direction: column; gap: 12px; }
+  .line { white-space: pre-wrap; font-size: 22px; line-height: 1.5; color: var(--cream); background: var(--plum); border: 3px solid var(--grape); border-radius: 18px; padding: 14px 18px; }
+  .line b { display: block; font-size: 14px; letter-spacing: 2px; margin-bottom: 4px; }
+  .line.joss b { color: var(--pink); }
+  .line.alex { border-color: var(--lime); }
+  .line.alex b { color: var(--lime); }
+  .line.tip { font-size: 17px; color: var(--mist); background: var(--night); border-style: dashed; }
+  .line.tip b { color: var(--orange); }
   #clock { font-family: var(--display); font-size: 32px; color: var(--lime); font-variant-numeric: tabular-nums; }
 </style>
 </head>
@@ -20,12 +27,12 @@
     <span class="kicker" id="count">Esperando la presentación…</span>
     <span id="clock">0:00</span>
   </div>
-  <h1 class="mid" id="title" style="font-size:34px">Abre esta ventana desde la presentación (tecla N)</h1>
+  <h1 class="mid" id="title" style="font-size:30px">Conectando con la presentación…</h1>
   <div id="notes"></div>
   <p class="muted" id="next"></p>
   <p class="lead" id="round"></p>
   <p id="hint" style="font-weight:800;color:var(--night);background:var(--lime);border:3px solid var(--ink);border-radius:14px;padding:10px 14px;margin:0" hidden></p>
-  <div class="row">
+  <div class="row" id="ctrls" hidden>
     <button class="btn dark" id="prev">← Anterior</button>
     <button class="btn" id="nextBtn">Siguiente →</button>
     <button class="btn dark" id="words">P · pausar / seguir palabras</button>
@@ -34,10 +41,12 @@
 </div>
 <script type="module">
   import { fmtTime } from './js/game.js';
+  import { GUION } from './js/guion.js';
   const chan = new BroadcastChannel('te-acuerdas-notas');
   const $ = (id) => document.getElementById(id);
   let start = Date.now();
   let last = null;
+  let viaChan = false; // misma compu que la presentación: llegan los mensajes y funcionan los botones
   chan.onmessage = (e) => {
     const m = e.data || {};
     if (m.type === 'hint') {
@@ -48,12 +57,53 @@
       return;
     }
     if (m.type !== 'slide') return;
-    last = m;
-    $('count').textContent = `Diapositiva ${m.index + 1} de ${m.total} · ${m.players} jugadores`;
-    $('title').textContent = m.title;
-    $('notes').textContent = m.notes || 'Sin notas.';
-    $('next').textContent = `Sigue: ${m.next}`;
+    viaChan = true;
+    $('ctrls').hidden = false;
+    show(m);
   };
+  function show(m) {
+    last = m;
+    $('count').textContent = `Diapositiva ${m.index + 1} de ${m.total}${m.players != null ? ` · ${m.players} jugadores` : ''}`;
+    $('title').textContent = m.title;
+    const g = m.guion;
+    const esc = (t) => String(t || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+    $('notes').innerHTML = g
+      ? [g.joss && `<div class="line joss"><b>JOSS${g.t ? ' · ' + esc(g.t) : ''}</b>${esc(g.joss)}</div>`,
+         g.alex && `<div class="line alex"><b>ALEX</b>${esc(g.alex)}</div>`,
+         g.tip && `<div class="line tip"><b>CÓMO FUNCIONA</b>${esc(g.tip)}</div>`].filter(Boolean).join('')
+      : `<div class="line">${esc(m.notes) || 'Sin notas.'}</div>`;
+    $('words').textContent = m.wordsPaused ? 'P · reanudar palabras' : 'P · pausar palabras';
+    $('next').textContent = `Sigue: ${m.next}`;
+  }
+
+  // En otro aparato (celular o tablet): sigue la diapositiva desde la sala, solo lectura.
+  async function follow(code) {
+    const [{ openStore }, { Room }] = await Promise.all([import('./js/store.js'), import('./js/room.js')]);
+    const store = await openStore();
+    const room = new Room(store, code);
+    let rounds = {};
+    let players = null;
+    let state = null;
+    const paint = () => {
+      if (viaChan) return;
+      if (!state?.slide || !state.total) { $('title').textContent = 'Esperando a que Joss empiece la presentación…'; return; }
+      const r = [2, 1].find((k) => rounds[k] && rounds[k].status !== 'idle' && rounds[k].status !== 'closed') || null;
+      show({
+        index: state.index || 0, total: state.total, title: state.title || state.slide,
+        guion: GUION[state.slide] || null, notes: '', next: state.next || '', wordsPaused: !!state.wordsPaused,
+        players, round: r ? { r, ...rounds[r] } : null, serverOffset: store.now() - Date.now(),
+      });
+    };
+    room.on('state', (v) => { state = v; paint(); });
+    room.on('rounds', (v) => { rounds = v || {}; paint(); });
+    room.on('players', (v) => { players = v ? Object.keys(v).length : 0; paint(); });
+  }
+  const code = (new URLSearchParams(location.search).get('s') || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+  setTimeout(() => {
+    if (viaChan) return;
+    if (code) follow(code).catch((e) => { console.error(e); $('title').textContent = 'No pudimos conectarnos a la sala. Revisa el link.'; });
+    else $('title').textContent = 'Abre esta ventana desde la presentación (botón «Abrir mis notas» o tecla N).';
+  }, 700);
   setInterval(() => {
     $('clock').textContent = fmtTime(Date.now() - start);
     const r = last?.round;
