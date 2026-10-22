@@ -216,6 +216,14 @@ export const STAGE_BY_SLIDE = {
 };
 for (let n = 1; n <= N_WORDS; n++) STAGE_BY_SLIDE['p' + String(n).padStart(2, '0')] = 'watch';
 
+// Portadas de ronda: el celular también las muestra.
+export const ROUND_COVERS = {
+  'ronda-1': { n: 1, label: 'RONDA 1', big: '1', title: 'Tu memoria', sub: 'Cómo guarda (y pierde) información tu cerebro.' },
+  'ronda-2': { n: 2, label: 'RONDA 2', big: '2', title: 'El olvido', sub: 'Adivina cuánto se te va en un solo día.' },
+  'ronda-3': { n: 3, label: 'RONDA 3', big: '3', title: 'Mitos', sub: 'Verdadero o falso: vota desde tu celular.' },
+  'ronda-final': { n: 4, label: 'LA FINAL', big: '20', title: 'El reto', sub: '20 palabras, 2 intentos. ¿Cuántas recuerdas?' },
+};
+
 export function stageFor(slideId, slideIndex, retoIndex) {
   if (STAGE_BY_SLIDE[slideId]) return STAGE_BY_SLIDE[slideId];
   if (retoIndex >= 0 && slideIndex > retoIndex) return 'final';
@@ -272,7 +280,7 @@ export const SCORED_QUESTIONS = ['olvido', 'mito-1', 'mito-2', 'mito-3', 'mito-4
 // correcta le atinó y cómo le fue con el número. qa = { pregunta: { uid: { v } } }.
 export function playerExtras(qa = {}) {
   const out = {};
-  const get = (uid) => (out[uid] ||= { rate: null, ok: 0, n: 0, chunk: null });
+  const get = (uid) => out[uid] || (out[uid] = { rate: null, ok: 0, n: 0, chunk: null });
   for (const [uid, a] of Object.entries(qa.rating || {})) if (a?.v != null) get(uid).rate = +a.v;
   for (const qid of SCORED_QUESTIONS) {
     for (const [uid, a] of Object.entries(qa[qid] || {})) {

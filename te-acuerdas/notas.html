@@ -18,6 +18,16 @@
   .line.alex b { color: var(--lime); }
   .line.tip { font-size: 17px; color: var(--mist); background: var(--night); border-style: dashed; }
   .line.tip b { color: var(--orange); }
+  #notes { display: flex; flex-direction: column; gap: 12px; }
+  .beat { display: flex; flex-direction: column; gap: 8px; padding-left: 12px; border-left: 6px solid transparent; transition: opacity .2s; }
+  .beat.now { border-left-color: var(--lime); }
+  .beat.past { opacity: .4; }
+  .cue { margin: 6px 0 0; font-size: 15px; font-weight: 800; letter-spacing: 1.5px; color: var(--mist); text-transform: uppercase; }
+  .cue.click { align-self: flex-start; color: var(--night); background: var(--pink); padding: 4px 12px; border-radius: 999px; }
+  .beat.next .cue.click { background: var(--lime); box-shadow: 0 0 0 4px rgba(198,244,50,.35); }
+  .cue.time { color: var(--lime); }
+  .line.mine { border-width: 4px; }
+  .line.joss.mine { border-color: var(--pink); }
   #clock { font-family: var(--display); font-size: 32px; color: var(--lime); font-variant-numeric: tabular-nums; }
 </style>
 </head>
@@ -41,7 +51,7 @@
 </div>
 <script type="module">
   import { fmtTime } from './js/game.js';
-  import { GUION } from './js/guion.js';
+  import { GUION, guionHtml } from './js/guion.js';
   const chan = new BroadcastChannel('te-acuerdas-notas');
   const $ = (id) => document.getElementById(id);
   let start = Date.now();
@@ -65,13 +75,10 @@
     last = m;
     $('count').textContent = `Diapositiva ${m.index + 1} de ${m.total}${m.players != null ? ` · ${m.players} jugadores` : ''}`;
     $('title').textContent = m.title;
-    const g = m.guion;
     const esc = (t) => String(t || '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
-    $('notes').innerHTML = g
-      ? [g.joss && `<div class="line joss"><b>JOSS${g.t ? ' · ' + esc(g.t) : ''}</b>${esc(g.joss)}</div>`,
-         g.alex && `<div class="line alex"><b>ALEX</b>${esc(g.alex)}</div>`,
-         g.tip && `<div class="line tip"><b>CÓMO FUNCIONA</b>${esc(g.tip)}</div>`].filter(Boolean).join('')
-      : `<div class="line">${esc(m.notes) || 'Sin notas.'}</div>`;
+    $('notes').innerHTML = GUION[m.id] ? guionHtml(m.id, 'J', m.click) : `<div class="line">${esc(m.notes) || 'Sin notas.'}</div>`;
+    const now = $('notes').querySelector('.beat.now');
+    if (now && m.click) now.scrollIntoView({ block: 'center', behavior: 'smooth' });
     $('words').textContent = m.wordsPaused ? 'P · reanudar palabras' : 'P · pausar palabras';
     $('next').textContent = `Sigue: ${m.next}`;
   }
@@ -90,7 +97,7 @@
       const r = [2, 1].find((k) => rounds[k] && rounds[k].status !== 'idle' && rounds[k].status !== 'closed') || null;
       show({
         index: state.index || 0, total: state.total, title: state.title || state.slide,
-        guion: GUION[state.slide] || null, notes: '', next: state.next || '', wordsPaused: !!state.wordsPaused,
+        id: state.slide, click: state.click ?? 0, notes: '', next: state.next || '', wordsPaused: !!state.wordsPaused,
         players, round: r ? { r, ...rounds[r] } : null, serverOffset: store.now() - Date.now(),
       });
     };

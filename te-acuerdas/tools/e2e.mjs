@@ -1,5 +1,5 @@
 // Prueba completa en modo ensayo local: Joss + Alex + 3 celulares + 25 jugadores
-// de prueba recorren las 57 diapositivas, con capturas en tools/out/. Revisa también
+// de prueba recorren las 61 diapositivas, con capturas en tools/out/. Revisa también
 // las notas de Joss, el panel de Alex, las reacciones y el PDF del recuerdo.
 //   npx http-server -p 8080 -c-1 .   (desde te-acuerdas/)
 //   node tools/e2e.mjs
@@ -111,9 +111,16 @@ await shot(alex, '06c-alex-guion');
 await alex.click('[data-tab="rehearsal"]');
 check(/\d/.test(await joss.textContent('[data-live="rating-avg"]')), 'promedio de la calificación en pantalla');
 
-// Gancho: respuesta libre
+// Portada de la ronda 1: en pantalla y en el celular
 await goTo('reglas');
 await shot(phones[0], '07-phone-look');
+await goTo('ronda-1');
+await wait(1600);
+await shot(joss, '07b-ronda-1');
+await shot(phones[0], '07c-phone-ronda');
+check(/TU MEMORIA/.test(await phones[0].textContent('#view')), 'el celular muestra la portada de la ronda');
+
+// Gancho: respuesta libre
 await goTo('gancho');
 await phones[0].fill('#qin', 'Que el café era gratis');
 await phones[0].click('#qsend');
@@ -172,6 +179,16 @@ await shot(phones[1], '22-phone-fallo');
 
 // Mitos V/F
 await goTo('curva', 900);
+await press(700);
+await press(700);
+await wait(600);
+check(/CLIC 2/.test(await notes.textContent('.beat.now .cue.click').catch(() => '')), 'las notas marcan el clic 2 en la curva');
+check(/CLIC 3/.test(await notes.textContent('.beat.next .cue.click').catch(() => '')), 'las notas anuncian el próximo clic');
+await shot(notes, '22b-notas-clic');
+await alex.click('[data-tab="live"]');
+await wait(500);
+check(/CLIC 2/.test(await alex.textContent('.guion .beat.now .cue.click').catch(() => '')), 'el panel de Alex marca el mismo clic');
+await shot(alex, '22c-alex-clic');
 await goTo('mitos', 900);
 for (const m of [1, 2, 3, 4]) {
   await goTo(`mito-${m}`);
@@ -287,7 +304,7 @@ await dl.saveAs(pdfPath);
 const { statSync, readFileSync } = await import('node:fs');
 check(dl.suggestedFilename() === 'Te-acuerdas-Rosbel.pdf' && statSync(pdfPath).size > 100000 && readFileSync(pdfPath).subarray(0, 5).toString() === '%PDF-', `el celular descarga su recuerdo en PDF (${dl.suggestedFilename()}, ${Math.round(statSync(pdfPath).size / 1024)} KB)`);
 const total = await joss.evaluate(() => document.getElementById('hCount').textContent);
-check(/\/ 57$/.test(total), `la presentación tiene 57 diapositivas (${total})`);
+check(/\/ 61$/.test(total), `la presentación tiene 61 diapositivas (${total})`);
 
 // Control remoto desde el panel de Alex
 await alex.click('[data-tab="live"]');
@@ -314,10 +331,10 @@ await remote.addInitScript(() => {
 await remote.setViewportSize({ width: 768, height: 1024 });
 await remote.goto(nl);
 await wait(2000);
-check(/Diapositiva 56 de 57/.test(await remote.textContent('#count')) && (await remote.isVisible('.line.joss')), 'las notas por link siguen la diapositiva sin la ventana emergente');
+check(/Diapositiva 60 de 61/.test(await remote.textContent('#count')) && (await remote.isVisible('.line.joss')), 'las notas por link siguen la diapositiva sin la ventana emergente');
 await alex.click('#next');
 await wait(1500);
-check(/Diapositiva 57 de 57/.test(await remote.textContent('#count')), 'las notas por link cambian solas con la presentación');
+check(/Diapositiva 61 de 61/.test(await remote.textContent('#count')), 'las notas por link cambian solas con la presentación');
 await shot(remote, '41c-notas-link');
 await alex.click('[data-tab="table"]');
 await wait(400);

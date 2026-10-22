@@ -5,7 +5,7 @@ import { openStore } from './store.js';
 import { REACTIONS } from './fx.js';
 import { Room, timeLeft, isOpen } from './room.js';
 import { avatarSVG, AVATARS, COLORS, encodeAvatar, decodeAvatar, randomAvatar } from './avatars.js';
-import { WORDS, N_WORDS, RANGES, QUESTIONS, CHUNK_NUMBER, chunkScore, clampName, fmtTime, escapeHtml } from './game.js';
+import { WORDS, N_WORDS, RANGES, QUESTIONS, ROUND_COVERS, CHUNK_NUMBER, chunkScore, clampName, fmtTime, escapeHtml } from './game.js';
 
 const $ = (id) => document.getElementById(id);
 const view = $('view');
@@ -146,6 +146,8 @@ function render() {
     const count = Object.keys(st.players || {}).filter((id) => !st.kicked?.[id]).length;
     return show(`wait-${count}-${me.name}-${me.avatar}`, waitScreen);
   }
+  const cover = ROUND_COVERS[st.state?.slide];
+  if (cover) return show(`cover-${st.state.slide}-${me.avatar}`, () => coverScreen(cover));
   return show(`look-${me.name}-${me.avatar}`, lookScreen);
 }
 
@@ -227,7 +229,15 @@ function joinScreen() {
     if (!n) { toast('Escribe tu nombre'); name.focus(); return; }
     $('join').disabled = true;
     try {
-      await room.join(n, draft.avatar);
+      try {
+        await room.join(n, draft.avatar);
+      } catch (e) {
+        // Si en Firebase siguen las reglas anteriores (solo 16 avatares sin color), entra con su cerebro sin color.
+        if (draft.avatar < 16) throw e;
+        console.warn('Avatar con color rechazado; se usa el clásico', e);
+        draft.avatar = decodeAvatar(draft.avatar).style % 16;
+        await room.join(n, draft.avatar);
+      }
       await room.markOnline();
       editing = false;
       navigator.vibrate?.([20, 40, 20]);
@@ -263,6 +273,17 @@ function lookScreen() {
     <div class="bounce" style="margin-top:16px">${avatarSVG(me.avatar, { size: 170 })}</div>
     <p class="big">MIRA LA PANTALLA</p>
     <p class="lead">Cuando haya una pregunta, aparece aquí sola.</p>`;
+}
+
+function coverScreen(c) {
+  view.innerHTML = `
+    <p class="label" style="margin-top:12px">${c.label}</p>
+    <p class="score pop-in">${c.big}</p>
+    <p class="big">${escapeHtml(c.title.toUpperCase())}</p>
+    <p class="lead">${escapeHtml(c.sub)}</p>
+    <div class="bounce">${avatarSVG(me.avatar, { size: 110 })}</div>
+    <p class="lead">Mira la pantalla: ya empieza.</p>`;
+  navigator.vibrate?.([30, 60, 30]);
 }
 
 const CHOICE_COLORS = { A: 'var(--lime)', B: 'var(--pink)', C: 'var(--orange)', D: 'var(--lilac)', V: 'var(--lime)', F: 'var(--pink)', si: 'var(--lime)', no: 'var(--lilac)' };

@@ -266,6 +266,7 @@ export function notesOf(slide) {
 export function titleOf(slide) {
   const tpl = document.createElement('template');
   tpl.innerHTML = slide.html;
+  const label = tpl.content.firstElementChild?.getAttribute('aria-label'); // las portadas de ronda traen su nombre
   const h = tpl.content.querySelector('h1, h2, h3') || tpl.content.querySelector('p');
-  return (h?.textContent || slide.id).replace(/\s+/g, ' ').trim();
+  return (label || h?.textContent || slide.id).replace(/\s+/g, ' ').trim();
 }

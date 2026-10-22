@@ -5,11 +5,11 @@ import { Room, joinUrl, adminUrl, notesUrl, timeLeft } from './room.js';
 import { Deck, notesOf, titleOf } from './deck.js';
 import { SLIDES } from './slides-data.js';
 import { renderLive, updateTimers, countUp } from './live.js';
-import { buildTable, stats, bestGain, stageFor, QUESTIONS, QUESTION_BY_SLIDE, summarize, escapeHtml, playerExtras } from './game.js';
+import { buildTable, stats, bestGain, stageFor, QUESTIONS, QUESTION_BY_SLIDE, ROUND_COVERS, summarize, escapeHtml, playerExtras } from './game.js';
 import { sfx, setSound, soundOn, confetti, REACTIONS, reactionSound } from './fx.js';
 import { icon } from './icons.js';
 import { avatarSVG } from './avatars.js';
-import { GUION, guionText } from './guion.js';
+import { guionText } from './guion.js';
 import { SOUND_DEFAULT, WORD_SECONDS } from './config.js';
 
 const $ = (id) => document.getElementById(id);
@@ -29,6 +29,7 @@ let closing = {};
 let lastTickSecond = {};
 let confirmCloseUntil = 0;
 let lastSlideId = null;
+let clickNo = 0; // en qué clic del guion va la diapositiva actual
 let wordTimer = null; // avance automático de las 20 palabras
 let wordsPaused = false;
 let chunkTimer = null; // cuenta regresiva del número de la prueba rápida
@@ -110,8 +111,31 @@ function save(patch) {
   try { localStorage.setItem(SAVED, JSON.stringify({ ...loadSaved(), ...patch })); } catch {}
 }
 
+// Revisa que en Firebase estén publicadas las reglas de esta versión (avatares con color y
+// reacciones). Si no, avisa a Joss: los celulares entran con el avatar sin color y las
+// reacciones no llegan. Se escribe un jugador de revisión y se borra al momento.
+async function checkRules(r) {
+  if (store.mode !== 'firebase') return;
+  const flag = `ta-reglas-${r.code}`;
+  try { if (localStorage.getItem(flag) === 'ok') return; } catch {}
+  const id = '_revision';
+  let ok = true;
+  try {
+    await store.update(r.p(`players/${id}`), { name: 'Revisión', avatar: 339, joinedAt: store.now() });
+    await store.set(r.p(`reactions/${id}`), { r: 'risa', t: store.now() });
+  } catch (e) {
+    console.warn('Reglas de Firebase desactualizadas', e);
+    ok = false;
+  }
+  await store.remove(r.p(`reactions/${id}`)).catch(() => {});
+  await store.remove(r.p(`players/${id}`)).catch(() => {});
+  if (ok) { try { localStorage.setItem(flag, 'ok'); } catch {} }
+  $('rulesWarn').hidden = ok;
+}
+
 async function useRoom(r, key, startIndex) {
   room = r;
+  await checkRules(r);
   if (!key) key = await r.get('hostKey').catch(() => null);
   save({ code: r.code, key });
   const q = new URLSearchParams(location.search);
@@ -241,7 +265,8 @@ function startDeck(index) {
     lastCmd = roomData.cmd?.id ?? ''; // no repetir órdenes viejas al abrir
     deck.guard = guard;
     deck.addEventListener('enter', (e) => {
-      if (e.detail.transition === 'push' || e.detail.transition === 'fade') sfx.whoosh();
+      const cover = ROUND_COVERS[e.detail.slide.id];
+      if (cover && e.detail.transition !== 'none') sfx.round(cover.n);
       renderLive(e.detail.el, data, { entering: true });
       resetWordTimer(e.detail.el, false);
     });
@@ -261,6 +286,7 @@ function guard() {
   const rd = data.rounds[r] || { status: 'idle' };
   if (rd.status === 'idle') {
     room.startRound(r);
+    setClick(1);
     sfx.start();
     hint(`Arrancó la ronda ${r}.`);
     return false;
@@ -296,7 +322,8 @@ function onSlide(e) {
   const word = /^p\d\d$/.test(slide.id) ? parseInt(slide.id.slice(1), 10) : 0;
   const title = titleOf(slide).slice(0, 90);
   const next = SLIDES[index + 1] ? titleOf(SLIDES[index + 1]).slice(0, 90) : '— Fin —';
-  room.setState({ slide: slide.id, index, stage, word, total: SLIDES.length, title, next, q: QUESTION_BY_SLIDE[slide.id] || null, wordsPaused, at: store.now() });
+  clickNo = countClicks();
+  room.setState({ slide: slide.id, index, stage, word, total: SLIDES.length, title, next, click: clickNo, q: QUESTION_BY_SLIDE[slide.id] || null, wordsPaused, at: store.now() });
   save({ index });
   updateHud();
   postNotes();
@@ -317,8 +344,27 @@ function syncQuestions(prevId, nowId) {
   }
 }
 
+// Clics de Joss que ya se dieron en esta diapositiva (para marcar el guion). En «chunk» el
+// segundo paso lo da la cuenta regresiva; en las rondas, el clic es el que arranca el reloj.
+function countClicks() {
+  const id = deck?.current?.id;
+  if (!id) return 0;
+  const r = ROUND_SLIDE[id];
+  if (r) return (data.rounds[r]?.status || 'idle') !== 'idle' ? 1 : 0;
+  const n = deck.steps.slice(0, deck.stepAt).filter((g) => !g.auto).length;
+  return id === 'chunk' ? Math.min(n, 1) : n;
+}
+
+function setClick(n) {
+  if (n === clickNo) return;
+  clickNo = n;
+  room.setState({ click: n });
+  postNotes();
+}
+
 function onStep(e) {
   const { order, auto, instant, slide } = e.detail;
+  if (!auto) setClick(countClicks());
   if (instant || auto) return;
   const qid = QUESTION_BY_SLIDE[slide.id];
   const q = qid && QUESTIONS[qid];
@@ -551,8 +597,9 @@ function postNotes() {
     index: i,
     total: SLIDES.length,
     title: titleOf(cur),
+    id: cur.id,
+    click: deck?.current ? clickNo : null,
     notes: guionText(cur.id) || notesOf(cur),
-    guion: GUION[cur.id] || null,
     next: next ? titleOf(next) : '— Fin —',
     wordsPaused,
     players: data.rows.length,

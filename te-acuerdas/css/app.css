@@ -154,3 +154,12 @@ body { min-height: 100dvh; background: radial-gradient(circle at 85% 0%, var(--g
 .recuerdo a { color: var(--lime); font-weight: 800; }
 .recuerdo.pop { animation: recuerdo 1.6s ease-in-out 3; }
 @keyframes recuerdo { 50% { transform: scale(1.03); box-shadow: 0 0 0 4px var(--lime); } }
+.pop-in { animation: popin .6s cubic-bezier(.2,1.6,.4,1) both; color: var(--lime); }
+@keyframes popin { from { transform: scale(.2); opacity: 0; } to { transform: none; opacity: 1; } }
+.guion .beat { display: flex; flex-direction: column; gap: 8px; padding-left: 10px; border-left: 5px solid transparent; }
+.guion .beat.now { border-left-color: var(--lime); }
+.guion .beat.past { opacity: .4; }
+.guion .cue { margin: 4px 0 0; font-size: 12px; font-weight: 800; letter-spacing: 1.5px; color: var(--mist); text-transform: uppercase; }
+.guion .cue.click { align-self: flex-start; color: var(--night); background: var(--pink); padding: 3px 10px; border-radius: 999px; }
+.guion .beat.next .cue.click { background: var(--lime); box-shadow: 0 0 0 3px rgba(198,244,50,.35); }
+.guion .cue.time { color: var(--lime); }

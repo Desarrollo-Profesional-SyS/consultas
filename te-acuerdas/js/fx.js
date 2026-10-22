@@ -101,8 +101,21 @@ function throttle(name, ms) {
 
 export const sfx = {
   unlock() { audio(); },
-  // Cambio de diapositiva: un soplido suave
-  whoosh() { if (throttle('whoosh', 300)) noise(0, 0.32, { gain: 0.07, freq: 500, to: 2600, q: 0.8 }); },
+  // Portada de ronda, estilo programa de concurso: subida, golpe y metales. Cada ronda sube de tono.
+  round(n = 1) {
+    if (!throttle('round', 900)) return;
+    const k = 2 ** ([0, 2, 4, 7][n - 1] / 12 || 0);
+    const hit = 0.74;
+    noise(0, hit, { gain: 0.12, freq: 300, to: 5000, q: 0.9, attack: hit * 0.9 }); // subida
+    tone(110 * k, 0, hit, { type: 'sawtooth', to: 440 * k, gain: 0.05, filter: 1800, attack: hit * 0.8 });
+    tone(110, hit, 0.5, { type: 'sine', to: 38, gain: 0.45 }); // bombo
+    noise(hit, 1.3, { gain: 0.16, type: 'highpass', freq: 5000, attack: 0.004 }); // platillo
+    const chord = [262, 330, 392].map((f) => f * k);
+    chord.forEach((f) => tone(f, hit + 0.02, 0.2, { type: 'sawtooth', gain: 0.07, filter: 2800 })); // ¡ta!
+    chord.forEach((f) => tone(f * 1.125, hit + 0.3, 0.18, { type: 'sawtooth', gain: 0.07, filter: 2800 })); // ¡ta!
+    [...chord, chord[0] * 2].forEach((f) => tone(f * 1.335, hit + 0.58, n === 4 ? 1.6 : 1.1, { type: 'sawtooth', gain: 0.06, filter: 3200, vib: [5.5, 7] })); // ¡taaaa!
+    if (n === 4) { sfx.drumroll(hit - 0.02); sfx.applause(2); }
+  },
   // Algo aparece
   pop() { tone(520, 0, 0.11, { type: 'triangle', to: 900, gain: 0.14 }); tone(1300, 0.01, 0.05, { type: 'sine', gain: 0.05 }); },
   // Alguien entra a la sala: resorte

@@ -4,7 +4,7 @@ import { openStore } from './store.js';
 import { Room, joinUrl, timeLeft, isOpen } from './room.js';
 import { SLIDES } from './slides-data.js';
 import { notesOf, titleOf } from './deck.js';
-import { GUION } from './guion.js';
+import { GUION, guionHtml as guionBeats } from './guion.js';
 import { avatarSVG, randomAvatar } from './avatars.js';
 import { REACTIONS } from './fx.js';
 import { WORDS, N_WORDS, buildTable, stats, isCorrect, autoVerdict, answerKey, botSheet, botAnswer, fmtTime, escapeHtml, norm, QUESTIONS, QUESTION_BY_SLIDE, summarize } from './game.js';
@@ -191,13 +191,12 @@ function tick() {
 
 // ---------- Guion ----------
 function guionHtml(id) {
-  const g = GUION[id];
-  if (!g) return notesOf(SLIDES.find((s) => s.id === id) || SLIDES[0]) ? `<div class="notes">${escapeHtml(notesOf(SLIDES.find((s) => s.id === id)))}</div>` : '';
-  return `<div class="guion">
-    ${g.alex ? `<div class="line alex"><b>TÚ (ALEX)${g.t ? ' · ' + escapeHtml(g.t) : ''}</b>${escapeHtml(g.alex)}</div>` : ''}
-    ${g.joss ? `<div class="line joss"><b>JOSS</b>${escapeHtml(g.joss)}</div>` : ''}
-    ${g.tip ? `<div class="line tip"><b>CÓMO FUNCIONA</b>${escapeHtml(g.tip)}</div>` : ''}
-  </div>`;
+  if (!GUION[id]) {
+    const n = notesOf(SLIDES.find((s) => s.id === id) || SLIDES[0]);
+    return n ? `<div class="notes">${escapeHtml(n)}</div>` : '';
+  }
+  const click = data.state?.slide === id ? data.state.click ?? 0 : null;
+  return `<div class="guion">${guionBeats(id, 'A', click)}</div>`;
 }
 
 // ---------- Preguntas en vivo ----------
