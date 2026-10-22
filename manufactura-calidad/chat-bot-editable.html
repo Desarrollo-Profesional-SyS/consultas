@@ -63,6 +63,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .hours b { color: var(--ink); font-weight: 600; }
 .legend { display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
 .legend span { display: flex; align-items: center; gap: 8px; }
+.legend .int-key { flex-wrap: wrap; gap: 4px; margin-top: 2px; }
 .sw { width: 22px; height: 14px; border-radius: 4px; border: 1px solid var(--line); flex: none; }
 .sw-in { background: var(--in); } .sw-out { background: var(--out); border-color: var(--out-line); } .sw-ase { background: var(--ase); border-color: var(--ase-line); }
 .sw-pill { background: var(--pill); } .sw-sys { background: var(--sys); }
@@ -145,6 +146,11 @@ textarea.f::placeholder, input.f::placeholder { color: var(--muted); opacity: .7
 .tag.mkt { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
 .tag.utl { background: var(--var); color: var(--var-ink); border-color: transparent; }
 .tag.new { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.tag.int { font-weight: 600; border-color: transparent; }
+.tag.int.caliente { background: var(--chg-bg); color: var(--chg); }
+.tag.int.tibio { background: var(--warn-bg); color: var(--warn); }
+.tag.int.frio { background: var(--var); color: var(--var-ink); }
+.tag.int.espera { background: var(--rev-bg); color: var(--rev); }
 .tag.edit { border-style: dashed; color: var(--ink); }
 .estado { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 8px; border: 1px solid transparent; cursor: pointer; }
 .estado.por_revisar { background: var(--rev-bg); color: var(--rev); }
@@ -188,6 +194,8 @@ mark.ph { background: var(--mark); color: var(--mark-ink); border-radius: 4px; p
 .cond dt { color: var(--muted); }
 .cond dd { margin: 0; min-width: 0; }
 .cond .yes dt { color: var(--ok); } .cond .no dt { color: var(--chg); }
+.cond .sep { border-top: 1px dashed var(--line); margin-top: 3px; padding-top: 5px; }
+.cond .kpi dd textarea.f { color: var(--accent); }
 @media (max-width: 520px) { .cond > div { grid-template-columns: 1fr; gap: 0; } }
 .comment { margin: 0; font-size: 13px; padding: 7px 10px; border-radius: 8px; background: var(--mark); color: var(--mark-ink); }
 .comment b { font-weight: 600; }
@@ -236,6 +244,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
         <span><i class="sw sw-sys"></i>Lo decide el asesor o el CRM</span>
         <span><i class="sw sw-out"></i>Mensaje del bot</span>
         <span><i class="sw sw-ase"></i>Mensaje del asesor</span>
+        <span class="int-key"><b class="tag int caliente">Caliente</b><b class="tag int tibio">Tibio</b><b class="tag int frio">Frío</b><b class="tag int espera">En espera</b></span>
       </div>
     </div>
     <div>
@@ -255,7 +264,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
           <h1>Bot Manufactura y Calidad · Conversación</h1>
           <span class="save" id="save" aria-live="polite"></span>
         </div>
-        <p class="help">Toca cualquier texto para editarlo: el mensaje, los botones, cuándo sale, la espera y qué pasa si responde o no. Los cambios se guardan solos y los ve todo el equipo.</p>
+        <p class="help">Toca cualquier texto para editarlo: el mensaje, los botones, cuándo sale, la espera, qué pasa si responde o no, qué hace el CRM y qué se mide. Los cambios se guardan solos y los ve todo el equipo.</p>
         <p class="notice" id="notice" hidden></p>
       </div>
     </header>
@@ -285,6 +294,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const chat = $('#chat');
   const ESTADOS = { por_revisar: 'Por revisar', cambiar: 'Cambiar', aprobado: 'Aprobado' };
+  const INTENCION = { caliente: 'Caliente', tibio: 'Tibio', frio: 'Frío', espera: 'En espera' };
   const EMOJI = /\p{Extended_Pictographic}/u;
   const ICON = {
     clock: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.6V8l2.4 1.6"/></svg>',
@@ -294,6 +304,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
     wait: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 2h8M4 14h8M5 2c0 3 6 3 6 6s-6 3-6 6M11 2c0 3-6 3-6 6s6 3 6 6"/></svg>',
     yes: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 8.5 3 3 7-7"/></svg>',
     no: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m4 4 8 8M12 4l-8 8"/></svg>',
+    chart: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 14h12M4 11V8M8 11V4M12 11V6.5"/></svg>',
     clip: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10.5 4.5 5.6 9.4a1.6 1.6 0 0 0 2.3 2.3l5-5a3 3 0 0 0-4.3-4.3l-5 5a4.4 4.4 0 0 0 6.2 6.2l4.2-4.2"/></svg>',
   };
 
@@ -333,7 +344,8 @@ svg.i { width: 13px; height: 13px; flex: none; }
     if (bt.some(x => !x.trim())) w.push('Hay un botón vacío.');
     return { w, ph: (b.match(/\[[^\]\n]+\]/g) || []).length, L };
   }
-  const edited = m => m.propuesta && ['cuerpo', 'botones', 'sale', 'espera', 'si_responde', 'no_responde', 'origen', 'viene_de']
+  const EDIT_FIELDS = ['cuerpo', 'botones', 'sale', 'espera', 'si_responde', 'no_responde', 'origen', 'viene_de', 'crm', 'indicador'];
+  const edited = m => m.propuesta && EDIT_FIELDS
     .some(k => JSON.stringify(m[k] ?? '') !== JSON.stringify(m.propuesta[k] ?? ''));
 
   // ---------- rendering ----------
@@ -357,6 +369,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
     const kind = m.actor === 'asesor' ? 'ase' : 'bot';
     const tags = [
       `<span class="step">${esc(m.paso || '—')}</span>`,
+      INTENCION[m.clasificacion] ? `<span class="tag int ${esc(m.clasificacion)}">${INTENCION[m.clasificacion]}</span>` : '',
       `<span class="tag">${m.actor === 'asesor' ? 'Asesor' : 'Bot'}</span>`,
       m.canal === 'plantilla'
         ? `<span class="tag ${m.categoria === 'UTILITY' ? 'utl' : 'mkt'}">Plantilla · ${m.categoria === 'UTILITY' ? 'Utilidad' : 'Marketing'}</span>`
@@ -389,7 +402,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
       const p = m.propuesta;
       orig = `<div class="orig"><h4>Propuesta original</h4><div class="txt">${esc(p.cuerpo)}</div>` +
         (p.botones?.length ? `<div class="txt">Botones: ${p.botones.map(esc).join(' · ')}</div>` : '') +
-        `<div class="txt">Sale: ${esc(p.sale)}\nEspera: ${esc(p.espera)}\nSi responde: ${esc(p.si_responde || '—')}\nSi no responde: ${esc(p.no_responde || '—')}</div>` +
+        `<div class="txt">Sale: ${esc(p.sale)}\nEspera: ${esc(p.espera)}\nSi responde: ${esc(p.si_responde || '—')}\nSi no responde: ${esc(p.no_responde || '—')}${'crm' in p ? '\nEn el CRM: ' + esc(p.crm || '—') : ''}${'indicador' in p ? '\nSe mide: ' + esc(p.indicador || '—') : ''}</div>` +
         (ro ? '' : '<div class="acts"><button type="button" data-act="restore">Restaurar la propuesta original</button></div>') + '</div>';
     }
     const confirm = S.confirm === m._k
@@ -414,6 +427,8 @@ svg.i { width: 13px; height: 13px; flex: none; }
           <div><dt>${ICON.wait} Espera</dt><dd>${ta(m, 'espera', 'Espera', 'Sin espera')}</dd></div>
           <div class="yes"><dt>${ICON.yes} Si responde</dt><dd>${ta(m, 'si_responde', 'Si responde', 'Sin condición')}</dd></div>
           <div class="no"><dt>${ICON.no} Si no responde</dt><dd>${ta(m, 'no_responde', 'Si no responde', 'Sin condición')}</dd></div>
+          <div class="sep"><dt>${ICON.gear} En el CRM</dt><dd>${ta(m, 'crm', 'Qué hace el CRM', 'Sin acciones')}</dd></div>
+          <div class="kpi"><dt>${ICON.chart} Se mide</dt><dd>${ta(m, 'indicador', 'Indicador', '¿Qué se mide en este paso?')}</dd></div>
         </dl>
         ${m.comentario ? `<p class="comment"><b>Comentario:</b> ${esc(m.comentario)}</p>` : ''}
         <details class="more"${S.open.has(m._k) ? ' open' : ''}>
@@ -423,6 +438,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
               ${inp('paso', 'Paso')}
               <label>Etapa<select data-f="etapa"${ro ? ' disabled' : ''}>${etOpts}</select></label>
               <label>Quién lo envía${sel('actor', [['bot', 'Bot'], ['asesor', 'Asesor']])}</label>
+              <label>Intención del lead${sel('clasificacion', [['', '—'], ['caliente', 'Caliente'], ['tibio', 'Tibio'], ['frio', 'Frío'], ['espera', 'En espera']])}</label>
               <label>De dónde viene${sel('origen_tipo', [['cliente', 'El cliente escribe o pulsa'], ['tiempo', 'Pasa el tiempo'], ['sistema', 'El asesor o el CRM']])}</label>
               <label>Tipo de mensaje${sel('canal', [['sesion', 'Sesión (dentro de 24 h)'], ['plantilla', 'Plantilla de Meta']])}</label>
               <label>Categoría de plantilla${sel('categoria', [['', '—'], ['UTILITY', 'Utilidad'], ['MARKETING', 'Marketing']])}</label>
@@ -457,7 +473,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
     if (S.filter !== 'todos' && (m.estado || 'por_revisar') !== S.filter) return false;
     if (!S.q) return true;
     const q = S.q.toLowerCase();
-    return [m.paso, m.cuerpo, m.origen, m.viene_de, (m.botones || []).join(' '), m.comentario].some(x => String(x || '').toLowerCase().includes(q));
+    return [m.paso, m.cuerpo, m.origen, m.viene_de, (m.botones || []).join(' '), m.comentario, m.crm, m.indicador, INTENCION[m.clasificacion]].some(x => String(x || '').toLowerCase().includes(q));
   }
 
   function grouped() {
@@ -488,7 +504,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
     for (const { e, list } of groups) {
       const vis = list.filter(visible);
       if (!vis.length) continue;
-      const flags = [e.reloj, e.solo_horario ? `Solo en horario: ${e.solo_horario}` : '', e.detener ? `Se detiene si responde: ${e.detener}` : '']
+      const flags = [e.reloj, e.solo_horario ? `Solo en horario: ${e.solo_horario}` : '', e.detener ? `Se detiene si responde: ${e.detener}` : '', e.crm && e.crm !== '—' ? `En el CRM: ${e.crm}` : '']
         .filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('');
       html += `<div class="stage" id="${anchor(e.clave)}"><span class="stage-chip"><span class="k">${esc(e.clave)}</span>${esc(e.nombre)}</span>${e.objetivo ? `<p>${esc(e.objetivo)}</p>` : ''}${flags ? `<div class="flags">${flags}</div>` : ''}</div>`;
       html += vis.map(cardHTML).join('');
@@ -680,7 +696,8 @@ svg.i { width: 13px; height: 13px; flex: none; }
       queue(k, { botones: arr }, true); render();
     } else if (act === 'restore') {
       const p = m.propuesta; if (!p) return;
-      queue(k, { cuerpo: p.cuerpo, botones: p.botones || [], sale: p.sale, espera: p.espera, si_responde: p.si_responde, no_responde: p.no_responde, origen: p.origen, viene_de: p.viene_de }, true);
+      const back = {}; for (const f of EDIT_FIELDS) if (f in p) back[f] = p[f] ?? (f === 'botones' ? [] : '');
+      queue(k, back, true);
       render(); toast(`${m.paso} volvió a la propuesta original.`);
     } else if (act === 'ask-del') {
       S.confirm = k; render();
@@ -697,7 +714,7 @@ svg.i { width: 13px; height: 13px; flex: none; }
       const nk = 'n' + Date.now().toString(36);
       const doc = {
         paso: 'Nuevo', etapa: m.etapa, orden, actor: 'bot', canal: 'sesion', categoria: '', plantilla: '', etiqueta: '',
-        origen_tipo: 'cliente', origen: '', viene_de: m.paso, sale: '', espera: '', si_responde: '', no_responde: '',
+        clasificacion: m.clasificacion || '', origen_tipo: 'cliente', origen: '', viene_de: m.paso, sale: '', espera: '', si_responde: '', no_responde: '', crm: '', indicador: '',
         ventana: '', adjunto: '', cuerpo: '', botones: [], variables: '', por_que: '', nota: '',
         estado: 'por_revisar', comentario: '', propuesta: null, editado_en: Date.now(),
       };
@@ -736,12 +753,14 @@ svg.i { width: 13px; height: 13px; flex: none; }
         const who = m.origen_tipo === 'cliente' ? 'Cliente' : m.origen_tipo === 'tiempo' ? 'Pasa el tiempo' : 'Asesor o CRM';
         lines.push(`[${who}] ${m.origen || ''} (viene de ${m.viene_de || '—'})`);
         const tipo = m.canal === 'plantilla' ? `Plantilla ${m.categoria === 'UTILITY' ? 'de utilidad' : 'de marketing'}${m.plantilla ? ' ' + m.plantilla : ''}` : 'Sesión';
-        lines.push(`${m.paso} · ${m.actor === 'asesor' ? 'Asesor' : 'Bot'} · ${tipo} · ${ESTADOS[m.estado || 'por_revisar']}`);
+        lines.push(`${m.paso} · ${m.actor === 'asesor' ? 'Asesor' : 'Bot'} · ${tipo}${INTENCION[m.clasificacion] ? ' · ' + INTENCION[m.clasificacion] : ''} · ${ESTADOS[m.estado || 'por_revisar']}`);
         lines.push(`Sale: ${m.sale || '—'}`);
         if (m.adjunto) lines.push(`Adjunto: ${m.adjunto}`);
         lines.push('', m.cuerpo || '', '');
         if ((m.botones || []).length) lines.push(`Botones: ${m.botones.join(' | ')}`);
         lines.push(`Espera: ${m.espera || '—'}`, `Si responde: ${m.si_responde || '—'}`, `Si no responde: ${m.no_responde || '—'}`);
+        if (m.crm) lines.push(`En el CRM: ${m.crm}`);
+        if (m.indicador) lines.push(`Se mide: ${m.indicador}`);
         if (m.comentario) lines.push(`Comentario: ${m.comentario}`);
         lines.push('', '---', '');
       }

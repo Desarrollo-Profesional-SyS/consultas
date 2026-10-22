@@ -5,14 +5,13 @@
 | `rediseno-bot-manufactura.html` | **Versión 2 del bot.** Árbol de decisión (bot y asesor, dentro y fuera de horario), el cuerpo y el tiempo de cada mensaje, plantillas de Meta rediseñadas, respuestas rápidas, guion del asesor y receta de configuración por etapa. |
 | `analisis-base-5-12-oct.html` | Análisis base de la semana del 5 al 12 de octubre de 2026: 74 leads y 2,215 mensajes. |
 
-## Versiones editables
+## Versiones editables (versión 3)
 
-La edición de los mensajes se hace en el chat; el bot y el árbol de decisión también están en dos documentos aparte. Los tres usan los mismos IDs de mensaje:
+La versión 3 parte del filtro de intención de B3 («Hablar con asesor», «Quiero saber más», «Solo explorando»). Los mensajes se editan en el chat y el camino completo está en el documento del árbol; los dos usan los mismos IDs:
 
-- [Chat Manufactura y Calidad](https://claude.ai/artifact/8YjnVue58feVScUBv5Pq5C) (`chat-bot-editable.html`): los 36 mensajes como conversación de WhatsApp. Cada mensaje muestra su paso, cuándo sale, de dónde viene la decisión, la espera y qué pasa si el cliente responde o no. Todo se edita en el mismo chat y se guarda solo.
-
-- [Bot Manufactura y Calidad · Mensajes y tiempos](https://claude.ai/code/artifact/1038e24c-2194-4ac1-99a9-15a13cda525e): los 36 mensajes con su texto, botones, espera, condición y estado de revisión, además de FAQ, objeciones, plantillas de Meta, respuestas rápidas y configuración por etapa.
-- [Bot Manufactura y Calidad · Árbol de decisión](https://claude.ai/code/artifact/3b3b1835-fa39-4b66-81b2-aca7468d8ce0): los árboles A (primer contacto), B (pago y cierre) y C (seguimiento y salida), y la tabla de 43 transiciones.
+- [Chat Manufactura y Calidad](https://claude.ai/artifact/8YjnVue58feVScUBv5Pq5C) (`chat-bot-editable.html`): 48 mensajes como conversación de WhatsApp, en 12 etapas, más 5 de la versión anterior en «Archivo». Cada mensaje muestra su paso, cuándo sale, de dónde viene la decisión, la intención del lead, la espera, qué pasa si responde o no, qué hace el CRM y qué se mide. Todo se edita en el mismo chat y se guarda solo.
+- [Bot Manufactura y Calidad · Árbol de decisión](https://claude.ai/code/artifact/3b3b1835-fa39-4b66-81b2-aca7468d8ce0): 8 árboles con todas las variantes (entrada y filtro, caliente con audio y PDF, tibio, frío, seguimiento, reactivación, pago y pago pendiente), 20 indicadores con su base y meta, el contenido del PDF personalizado con los cursos sugeridos por área, y la tabla de 121 transiciones.
+- [Bot Manufactura y Calidad · Mensajes y tiempos](https://claude.ai/code/artifact/1038e24c-2194-4ac1-99a9-15a13cda525e): la especificación de la versión 2, que queda como referencia de las respuestas frecuentes, las objeciones y las plantillas de Meta.
 
 ## Horario
 
