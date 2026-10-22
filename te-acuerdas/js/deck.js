@@ -42,20 +42,21 @@ export class Deck extends EventTarget {
     return el;
   }
 
+  // Pasos de aparición. Dentro de un mismo número de orden, lo marcado «auto» sale
+  // solo y lo demás espera el clic (así «drop 1 auto» y «rise 1» son dos pasos).
   parseBuilds(el) {
     const groups = new Map();
     const add = (node, attr, kind) => {
       const [effect = 'fade', orderTxt, autoTxt] = node.getAttribute(attr).trim().split(/\s+/);
       const order = parseInt(orderTxt, 10) || 1;
       const auto = autoTxt === 'auto' || orderTxt === 'auto';
-      if (!groups.has(order)) groups.set(order, { order, items: [], auto: true });
-      const g = groups.get(order);
-      g.items.push({ node, kind, effect });
-      g.auto = g.auto && auto;
+      const key = `${order}-${auto ? 0 : 1}`;
+      if (!groups.has(key)) groups.set(key, { order, auto, items: [] });
+      groups.get(key).items.push({ node, kind, effect });
     };
     el.querySelectorAll('[data-build-in]').forEach((n) => add(n, 'data-build-in', 'in'));
     el.querySelectorAll('[data-build-out]').forEach((n) => add(n, 'data-build-out', 'out'));
-    return [...groups.values()].sort((a, b) => a.order - b.order);
+    return [...groups.values()].sort((a, b) => a.order - b.order || Number(b.auto) - Number(a.auto));
   }
 
   // ---------- Navegación ----------
@@ -95,6 +96,10 @@ export class Deck extends EventTarget {
     if (this.busy) return;
     if (this.guard && this.guard('next') === false) return;
     clearTimeout(this.autoTimer);
+    // Si solo faltan apariciones automáticas, el clic las termina y avanza.
+    if (this.stepAt < this.steps.length && this.steps.slice(this.stepAt).every((g) => g.auto)) {
+      while (this.stepAt < this.steps.length) this.playStep(true);
+    }
     if (this.stepAt < this.steps.length) {
       this.playStep();
       this.runAutoSteps(450);
@@ -128,6 +133,7 @@ export class Deck extends EventTarget {
   playStep(instant = false) {
     const g = this.steps[this.stepAt++];
     if (!g) return;
+    this.dispatchEvent(new CustomEvent('step', { detail: { order: g.order, auto: g.auto, instant, slide: this.current } }));
     for (const it of g.items) {
       if (it.kind === 'in') {
         it.node.removeAttribute('data-pending');

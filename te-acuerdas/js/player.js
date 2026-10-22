@@ -1,9 +1,10 @@
-// El celular de cada participante: entrar a la sala (avatar + nombre), ver la
-// pantalla mientras pasan las palabras, contestar las dos rondas y ver su lugar.
+// El celular de cada participante: entrar a la sala (avatar + nombre), contestar
+// las preguntas en vivo, ver la pantalla mientras pasan las palabras, contestar
+// las dos rondas y ver su lugar.
 import { openStore } from './store.js';
 import { Room, timeLeft, isOpen } from './room.js';
 import { avatarSVG, AVATAR_COUNT } from './avatars.js';
-import { WORDS, N_WORDS, RANGES, clampName, fmtTime, escapeHtml } from './game.js';
+import { WORDS, N_WORDS, RANGES, QUESTIONS, CHUNK_NUMBER, chunkScore, clampName, fmtTime, escapeHtml } from './game.js';
 
 const $ = (id) => document.getElementById(id);
 const view = $('view');
@@ -11,7 +12,7 @@ const JOKES = ['Bienvenido al club. Es lo normal.', 'Arriba del promedio. Nada m
 
 let store;
 let room;
-let st = { state: {}, rounds: {}, players: {}, results: {}, kicked: {}, order2: [], mine: { 1: null, 2: null } };
+let st = { state: {}, rounds: {}, players: {}, results: {}, kicked: {}, order2: [], q: {}, mine: { 1: null, 2: null }, qa: {} };
 let me = null; // { name, avatar }
 let editing = false;
 let draft = { name: '', avatar: null };
@@ -50,6 +51,8 @@ async function boot() {
   watch('results', 'results');
   watch('kicked', 'kicked');
   watch('order2', 'order2');
+  watch('q', 'q');
+  for (const qid of Object.keys(QUESTIONS)) room.on(`qa/${qid}/${store.uid}`, (v) => { st.qa[qid] = v; render(); });
   for (const r of [1, 2]) room.on(`answers/${r}/${store.uid}`, (v) => { st.mine[r] = v; render(); });
   store.onConnection((ok) => {
     if (ok && me) room.markOnline().catch(() => {});
@@ -83,6 +86,13 @@ function render() {
   const open = [1, 2].find((r) => isOpen(st.rounds[r]));
   if (open) return show(`sheet-${open}`, () => sheetScreen(open), true);
 
+  const qid = st.state?.q;
+  if (qid && QUESTIONS[qid]) {
+    const qs = st.q?.[qid] || {};
+    const mine = st.qa?.[qid];
+    return show(`q-${qid}-${qs.open ? 'o' : 'c'}-${qs.closedAt ? 'x' : ''}-${qs.revealed ? 'r' : ''}-${mine ? `${mine.v}|${mine.area || ''}|${mine.t}` : ''}-${st.state.slide}`, () => questionScreen(qid));
+  }
+
   const stage = st.state?.stage || 'pre';
   const s1 = st.rounds?.[1]?.status || 'idle';
   const s2 = st.rounds?.[2]?.status || 'idle';
@@ -97,8 +107,11 @@ function render() {
   }
   if (stage === 'r1') return show('ready-1', () => readyScreen(1));
   if (stage === 'watch') return show(`watch-${st.state.word || 0}`, watchScreen, false, true);
-  const count = Object.keys(st.players || {}).filter((id) => !st.kicked?.[id]).length;
-  return show(`wait-${count}-${me.name}-${me.avatar}`, waitScreen);
+  if (stage === 'lobby') {
+    const count = Object.keys(st.players || {}).filter((id) => !st.kicked?.[id]).length;
+    return show(`wait-${count}-${me.name}-${me.avatar}`, waitScreen);
+  }
+  return show(`look-${me.name}-${me.avatar}`, lookScreen);
 }
 
 // Redibuja solo si cambió la pantalla (para no perder lo que se está escribiendo).
@@ -138,6 +151,7 @@ function joinScreen() {
       <input class="input" id="name" maxlength="18" autocomplete="nickname" enterkeyhint="go" placeholder="Como te dicen en la ofi" value="${escapeHtml(draft.name)}">
       <span class="hint-text">Así vas a salir en la pantalla y en la tabla.</span>
     </div>
+    <p class="lead" style="font-size:16px">Durante toda la sesión vas a contestar aquí: votaciones, un número, tu opinión y el reto de las 20 palabras.</p>
     <button class="btn" id="join" style="font-size:22px;min-height:60px">${editing ? 'Guardar cambios' : '¡Entrar al juego!'}</button>
     ${editing ? '<button class="btn ghost" id="cancel">Cancelar</button>' : ''}`;
   view.querySelectorAll('.avatars button').forEach((b) => {
@@ -180,10 +194,147 @@ function waitScreen() {
   view.innerHTML = `
     <div class="bounce" style="margin-top:12px">${avatarSVG(me.avatar, { size: 170 })}</div>
     <p class="big">¡LISTO, ${escapeHtml(me.name.toUpperCase())}!</p>
-    <p class="lead">Ya estás en el juego. <b>Mira la pantalla de Joss</b>: el reto empieza en un momento.</p>
+    <p class="lead">Ya estás en el juego. Deja esta página abierta: <b>aquí te van a llegar las preguntas</b> durante toda la sesión.</p>
     <span class="pill">${count} ${count === 1 ? 'cerebro conectado' : 'cerebros conectados'}</span>
     <button class="btn ghost small" id="edit">Cambiar nombre o avatar</button>`;
   $('edit').onclick = () => { editing = true; draft.avatar = null; render(); };
+}
+
+// Entre preguntas: el avatar y «Mira la pantalla», para que nadie se quede en una pregunta vieja.
+function lookScreen() {
+  view.innerHTML = `
+    <div class="bounce" style="margin-top:16px">${avatarSVG(me.avatar, { size: 170 })}</div>
+    <p class="big">MIRA LA PANTALLA</p>
+    <p class="lead">Cuando haya una pregunta, aparece aquí sola.</p>`;
+}
+
+const CHOICE_COLORS = { A: 'var(--lime)', B: 'var(--pink)', C: 'var(--orange)', D: 'var(--lilac)', V: 'var(--lime)', F: 'var(--pink)', si: 'var(--lime)', no: 'var(--lilac)' };
+
+function questionScreen(qid) {
+  const q = QUESTIONS[qid];
+  const qs = st.q?.[qid] || {};
+  const mine = st.qa?.[qid];
+  const isMito = qid.startsWith('mito');
+  const head = `<p class="label" style="margin-top:6px">${isMito ? `Mito ${qid.slice(-1)} de 4 · ¿verdadero o falso?` : 'Pregunta en vivo'}</p>
+    <p class="${isMito ? 'mid' : 'lead'}" style="${isMito ? 'font-size:26px;line-height:1.2;color:var(--cream);text-shadow:none;font-family:var(--body);font-weight:800' : 'font-size:22px;font-weight:800;color:var(--cream)'}">${escapeHtml(q.prompt)}</p>`;
+
+  // La prueba del número: antes de abrir, a memorizar
+  if (q.type === 'number' && !qs.open && !qs.closedAt) {
+    view.innerHTML = `<p class="label" style="margin-top:20px">Prueba rápida</p><p class="big pulse">MIRA LA PANTALLA</p><p class="lead">Memoriza el número. En 5 segundos se borra y aquí lo escribes.</p>`;
+    return;
+  }
+
+  // Cerrada: resultado o «mira la pantalla»
+  if (!qs.open) {
+    if (q.type === 'number') return chunkResult(mine);
+    if (q.correct && qs.revealed) {
+      const right = q.options.find((o) => o.id === q.correct);
+      const ok = mine?.v === q.correct;
+      const two = q.options.length === 2;
+      const what = two ? `ERA ${right.label}` : `ERA LA ${right.id}`;
+      const mineOpt = q.options.find((o) => o.id === mine?.v);
+      const lower = (o) => escapeHtml(o.label.toLowerCase());
+      const detail = ok
+        ? (two ? `Era ${lower(right)}.` : `Era la ${right.id}: ${lower(right)}.`)
+        : !mineOpt ? `No alcanzaste a votar.${two ? '' : ` Era ${lower(right)}.`}`
+        : two ? `Votaste ${lower(mineOpt)}.` : `Votaste la ${mineOpt.id} (${lower(mineOpt)}). Era ${lower(right)}.`;
+      view.innerHTML = `
+        <div class="bounce" style="margin-top:12px">${avatarSVG(me.avatar, { size: 140 })}</div>
+        <p class="big" style="${ok ? '' : 'color:var(--pink);text-shadow:4px 4px 0 var(--ink)'}">${ok ? '¡LE ATINASTE!' : what}</p>
+        <p class="lead">${detail}</p>`;
+      navigator.vibrate?.(ok ? [30, 40, 30] : 60);
+      return;
+    }
+    view.innerHTML = `
+      <div class="bounce" style="margin-top:16px">${avatarSVG(me.avatar, { size: 150 })}</div>
+      <p class="big">${mine ? '¡GRACIAS!' : 'SE CERRÓ'}</p>
+      <p class="lead">Mira la pantalla.</p>`;
+    return;
+  }
+
+  if (q.type === 'scale') {
+    view.innerHTML = `${head}
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:100%">
+        ${Array.from({ length: q.max - q.min + 1 }, (_, i) => q.min + i).map((n) => `<button class="btn ${+mine?.v === n ? '' : 'dark'}" data-v="${n}" style="min-height:64px;font-family:var(--display);font-size:30px;padding:0">${n}</button>`).join('')}
+      </div>
+      <p class="lead">${mine ? `Tu calificación: <b>${mine.v}</b>. Puedes cambiarla mientras esté abierta.` : '1 = la de un pez · 10 = la de un elefante'}</p>`;
+    view.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => send(qid, +b.dataset.v)));
+    return;
+  }
+
+  if (q.type === 'choice') {
+    const big = q.options.length === 2;
+    view.innerHTML = `${head}
+      <div style="display:grid;grid-template-columns:${big ? '1fr 1fr' : '1fr'};gap:12px;width:100%">
+        ${q.options.map((o) => {
+          const on = mine?.v === o.id;
+          return `<button class="btn" data-v="${o.id}" style="background:${CHOICE_COLORS[o.id]};min-height:${big ? 120 : 76}px;font-size:${big ? 26 : 20}px;justify-content:${big ? 'center' : 'flex-start'};text-align:left;${on ? 'outline:5px solid var(--cream);outline-offset:3px' : mine ? 'filter:saturate(.5) brightness(.8)' : ''}">
+            ${big ? escapeHtml(o.label) : `<span style="font-family:var(--display);font-size:30px;width:36px">${o.id}</span>${escapeHtml(o.label)}`}${on ? ' ✓' : ''}</button>`;
+        }).join('')}
+      </div>
+      <p class="lead">${mine ? 'Voto registrado. Puedes cambiarlo mientras esté abierta.' : 'Toca tu respuesta.'}</p>`;
+    view.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => send(qid, b.dataset.v)));
+    return;
+  }
+
+  if (q.type === 'number') {
+    view.innerHTML = `${head}
+      <input class="input" id="qin" inputmode="numeric" autocomplete="off" maxlength="16" placeholder="10 dígitos" value="${escapeHtml(mine?.v || '')}" style="text-align:center;font-size:30px;letter-spacing:4px">
+      <button class="btn" id="qsend" style="font-size:22px;min-height:58px">${mine ? 'Cambiar respuesta' : 'Enviar'}</button>
+      ${mine ? `<p class="lead">Enviaste <b>${escapeHtml(mine.v)}</b>.</p>` : ''}`;
+    $('qsend').onclick = () => {
+      const v = $('qin').value.replace(/[^\d\s.\-]/g, '').trim();
+      if (!v) return toast('Escribe el número');
+      send(qid, v.slice(0, 16));
+    };
+    $('qin').onkeydown = (e) => { if (e.key === 'Enter') $('qsend').click(); };
+    if (!mine) setTimeout(() => $('qin')?.focus(), 200);
+    return;
+  }
+
+  // Texto libre (con área opcional en el cierre)
+  let area = mine?.area || '';
+  view.innerHTML = `${head}
+    <textarea class="input" id="qin" maxlength="${q.max}" rows="3" placeholder="Escribe aquí (máximo ${q.max} letras)" style="resize:none;font-size:19px">${escapeHtml(mine?.v || '')}</textarea>
+    <p class="hint-text" id="qcount" style="align-self:flex-end;margin-top:-10px"></p>
+    ${q.areas ? `<p class="label" style="align-self:flex-start">Tu área (opcional)</p><div class="row" id="areas" style="gap:8px">${q.areas.map((a) => `<button class="btn small ${a === area ? '' : 'dark'}" data-a="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}</div>` : ''}
+    <button class="btn" id="qsend" style="font-size:22px;min-height:58px">${mine ? 'Actualizar' : 'Enviar'}</button>
+    ${mine ? '<p class="lead">¡Listo! Ya sale en la pantalla. Puedes cambiarla mientras esté abierta.</p>' : ''}`;
+  const inp = $('qin');
+  const count = () => ($('qcount').textContent = `${inp.value.length}/${q.max}`);
+  inp.oninput = count;
+  count();
+  view.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => {
+    area = area === b.dataset.a ? '' : b.dataset.a;
+    view.querySelectorAll('[data-a]').forEach((x) => x.classList.toggle('dark', x.dataset.a !== area));
+  }));
+  $('qsend').onclick = () => {
+    const v = inp.value.replace(/\s+/g, ' ').trim().slice(0, q.max);
+    if (!v) return toast('Escribe tu respuesta');
+    send(qid, v, q.areas && area ? { area } : {});
+  };
+}
+
+async function send(qid, v, extra = {}) {
+  try {
+    await room.answerQuestion(qid, v, extra);
+    navigator.vibrate?.(20);
+  } catch (e) {
+    console.warn(e);
+    toast('Ya se cerró esta pregunta');
+  }
+}
+
+function chunkResult(mine) {
+  if (!mine) {
+    view.innerHTML = `<p class="label" style="margin-top:20px">Prueba rápida</p><p class="big">ERA ${CHUNK_NUMBER}</p><p class="lead">No alcanzaste a contestar. Mira el truco en la pantalla.</p>`;
+    return;
+  }
+  const { hits, ok } = chunkScore(mine.v);
+  view.innerHTML = `
+    <div class="bounce" style="margin-top:12px">${avatarSVG(me.avatar, { size: 140 })}</div>
+    <p class="big" style="${ok ? '' : 'font-size:clamp(30px,9vw,48px)'}">${ok ? '¡LO RECORDASTE!' : `ERA ${CHUNK_NUMBER}`}</p>
+    <p class="lead">${ok ? 'Los 10 dígitos en orden.' : `Acertaste <b>${hits} de 10</b> dígitos en su lugar.`}</p>`;
 }
 
 function watchScreen() {

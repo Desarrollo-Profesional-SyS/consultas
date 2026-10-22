@@ -5,14 +5,14 @@ import { Room, joinUrl, adminUrl, timeLeft } from './room.js';
 import { Deck, notesOf, titleOf } from './deck.js';
 import { SLIDES } from './slides-data.js';
 import { renderLive, updateTimers, countUp } from './live.js';
-import { buildTable, stats, bestGain, stageFor } from './game.js';
+import { buildTable, stats, bestGain, stageFor, QUESTIONS, QUESTION_BY_SLIDE, summarize } from './game.js';
 import { sfx, setSound, soundOn, confetti } from './fx.js';
 import { icon } from './icons.js';
-import { SOUND_DEFAULT } from './config.js';
+import { SOUND_DEFAULT, WORD_SECONDS } from './config.js';
 
 const $ = (id) => document.getElementById(id);
 const ROUND_SLIDE = { escribe: 1, segunda: 2 };
-const LOBBY_INDEX = SLIDES.findIndex((s) => s.id === 'sala');
+const RETO_INDEX = SLIDES.findIndex((s) => s.id === 'reto');
 const SAVED = 'te-acuerdas-joss';
 
 let store;
@@ -26,11 +26,15 @@ let publishTimer = null;
 let closing = {};
 let lastTickSecond = {};
 let confirmCloseUntil = 0;
+let lastSlideId = null;
+let wordTimer = null; // avance automático de las 20 palabras
+let wordsPaused = false;
+let chunkTimer = null; // cuenta regresiva del número de la prueba rápida
 const notesChan = new BroadcastChannel('te-acuerdas-notas');
 
 function emptyData() {
   const s = { count: 0, avg: 0, byNumber: Array(20).fill(0), ranges: [[], [], [], []] };
-  return { code: '', url: '', rows: [], stats: { 1: s, 2: s }, rounds: {}, order2: [], best: null, answers: {}, now: Date.now() };
+  return { code: '', url: '', rows: [], stats: { 1: s, 2: s }, rounds: {}, order2: [], best: null, answers: {}, qs: {}, qstate: {}, now: Date.now() };
 }
 
 function toast(msg, ms = 2600) {
@@ -41,12 +45,9 @@ function toast(msg, ms = 2600) {
   t._h = setTimeout(() => t.classList.remove('show'), ms);
 }
 
-function hint(msg, ms = 2600) {
-  const h = $('hint');
-  h.textContent = msg;
-  h.classList.add('show');
-  clearTimeout(h._h);
-  h._h = setTimeout(() => h.classList.remove('show'), ms);
+// Avisos para Joss: nunca en la diapositiva (la ve todo el grupo), solo en la ventana de notas.
+function hint(msg) {
+  notesChan.postMessage({ type: 'hint', text: msg, at: Date.now() });
 }
 
 // ---------- Arranque ----------
@@ -146,6 +147,9 @@ function recompute() {
   data.answers = roomData.answers || {};
   data.stats = { 1: stats(rows, 1), 2: stats(rows, 2) };
   data.best = bestGain(rows);
+  data.qstate = roomData.q || {};
+  data.qs = {};
+  for (const qid of Object.keys(QUESTIONS)) data.qs[qid] = summarize(qid, roomData.qa?.[qid], rows, roomData.qhide?.[qid]);
   data.now = store.now();
   if (deck?.el) renderLive(deck.el, data);
   handleCmd(roomData.cmd);
@@ -174,8 +178,9 @@ function handleCmd(cmd) {
   if (!deck || lastCmd === undefined || !cmd || cmd.id === lastCmd) return;
   lastCmd = cmd.id;
   if (store.now() - (cmd.at || 0) > 15000) return;
-  if (cmd.type === 'next') deck.next();
-  else if (cmd.type === 'prev') deck.prev();
+  if (cmd.type === 'next') manualNext();
+  else if (cmd.type === 'prev') manualPrev();
+  else if (cmd.type === 'words') toggleWords();
   else if (cmd.type === 'goto' && cmd.slide) deck.goto(cmd.slide, { final: true });
 }
 
@@ -198,7 +203,7 @@ function tick() {
       closing[r] = true;
       room.closeRound(r).then(() => {
         if (deck?.current?.id && ROUND_SLIDE[deck.current.id] === r) sfx.end();
-        if (everyoneDone && left > 0) toast('¡Todos terminaron! Ronda cerrada.');
+        if (everyoneDone && left > 0) hint('¡Todos terminaron! Ronda cerrada.');
       });
     }
   }
@@ -212,9 +217,13 @@ function startDeck(index) {
     deck = new Deck($('stage'), SLIDES);
     lastCmd = roomData.cmd?.id ?? ''; // no repetir órdenes viejas al abrir
     deck.guard = guard;
-    deck.addEventListener('enter', (e) => renderLive(e.detail.el, data, { entering: true }));
+    deck.addEventListener('enter', (e) => {
+      renderLive(e.detail.el, data, { entering: true });
+      resetWordTimer(e.detail.el, false);
+    });
     deck.addEventListener('change', onSlide);
     deck.addEventListener('built', onBuilt);
+    deck.addEventListener('step', onStep);
     bindKeys();
     deck.go(index, { final: index > 0 });
   }
@@ -222,13 +231,14 @@ function startDeck(index) {
 }
 
 function guard() {
+  if (chunkTimer) { finishChunk(); return false; } // clic durante la cuenta regresiva: se adelanta
   const r = ROUND_SLIDE[deck.current.id];
   if (!r || deck.pendingSteps > 0) return true;
   const rd = data.rounds[r] || { status: 'idle' };
   if (rd.status === 'idle') {
     room.startRound(r);
     sfx.start();
-    hint(`¡Arrancó la ronda ${r}! Los celulares ya están abiertos.`);
+    hint(`Arrancó la ronda ${r}.`);
     return false;
   }
   if (rd.status === 'running' && timeLeft(rd, store.now()) <= 0) {
@@ -244,7 +254,7 @@ function guard() {
       return false;
     }
     confirmCloseUntil = Date.now() + 3000;
-    hint('La ronda sigue abierta. Pulsa → otra vez para cerrarla ya.', 3000);
+    hint('La ronda sigue abierta. Pulsa → otra vez para cerrarla ya.');
     return false;
   }
   return true;
@@ -252,16 +262,132 @@ function guard() {
 
 function onSlide(e) {
   const { slide, index } = e.detail;
-  const stage = stageFor(slide.id, index, LOBBY_INDEX);
+  const prev = lastSlideId;
+  lastSlideId = slide.id;
+  cancelChunk();
+  if (!/^p\d\d$/.test(slide.id)) cancelWordClock();
+  if (prev === 'reto' && slide.id === 'p01') wordsPaused = false; // el primer clic en reto arranca el avance solo
+  syncQuestions(prev, slide.id);
+  const stage = stageFor(slide.id, index, RETO_INDEX);
   const word = /^p\d\d$/.test(slide.id) ? parseInt(slide.id.slice(1), 10) : 0;
-  room.setState({ slide: slide.id, index, stage, word, total: SLIDES.length, at: store.now() });
+  room.setState({ slide: slide.id, index, stage, word, total: SLIDES.length, q: QUESTION_BY_SLIDE[slide.id] || null, wordsPaused, at: store.now() });
   save({ index });
   updateHud();
   postNotes();
 }
 
+// ---------- Preguntas en vivo: se abren al entrar y se cierran al salir o con su clic ----------
+function syncQuestions(prevId, nowId) {
+  const prevQ = prevId && QUESTION_BY_SLIDE[prevId];
+  const nowQ = QUESTION_BY_SLIDE[nowId];
+  if (prevQ && prevQ !== nowQ && data.qstate[prevQ]?.open) room.closeQuestion(prevQ);
+  if (nowQ) {
+    const q = QUESTIONS[nowQ];
+    const st = data.qstate[nowQ];
+    if (nowId === q.slide && q.open !== 'manual' && !st?.closedAt && !st?.open) room.openQuestion(nowQ);
+  }
+}
+
+function onStep(e) {
+  const { order, auto, instant, slide } = e.detail;
+  if (instant || auto) return;
+  const qid = QUESTION_BY_SLIDE[slide.id];
+  const q = qid && QUESTIONS[qid];
+  if (q && slide.id === q.slide && q.close === order) room.closeQuestion(qid, { reveal: true });
+  if (slide.id === 'chunk' && order === 1) startChunk();
+}
+
+// Prueba rápida: el número se ve 5 segundos con cuenta regresiva, se oculta solo y se abre la pregunta.
+function startChunk() {
+  const el = deck.el;
+  const cd = el.querySelector('[data-live="chunk-countdown"]');
+  let left = 5;
+  const show = () => {
+    if (!cd) return;
+    cd.style.visibility = 'visible';
+    cd.textContent = String(left);
+    cd.animate([{ scale: '1.25' }, { scale: '1' }], { duration: 300, easing: 'ease-out' });
+  };
+  show();
+  sfx.tick();
+  chunkTimer = setInterval(() => {
+    left--;
+    if (left <= 0) return finishChunk();
+    show();
+    sfx.tick();
+  }, 1000);
+}
+
+function finishChunk() {
+  cancelChunk();
+  const cd = deck.el?.querySelector('[data-live="chunk-countdown"]');
+  if (cd) cd.style.visibility = 'hidden';
+  if (deck.current?.id === 'chunk' && deck.pendingSteps > 0) deck.next(); // oculta el número y muestra el resto
+  if (!data.qstate.chunk?.closedAt) room.openQuestion('chunk');
+}
+
+function cancelChunk() {
+  clearInterval(chunkTimer);
+  chunkTimer = null;
+}
+
+// ---------- Las 20 palabras: cada una se queda WORD_SECONDS y avanza sola ----------
+function wordSvg(el = deck?.el) {
+  return el?.querySelector('[data-live="word-timer"]');
+}
+
+function resetWordTimer(el, run) {
+  const svg = wordSvg(el);
+  if (!svg?.setCurrentTime) return;
+  svg.pauseAnimations();
+  svg.setCurrentTime(0);
+  if (run) svg.unpauseAnimations();
+}
+
+function startWordClock() {
+  cancelWordClock();
+  if (wordsPaused || !/^p\d\d$/.test(deck.current?.id || '')) return;
+  resetWordTimer(deck.el, true);
+  const id = deck.current.id;
+  wordTimer = setTimeout(() => {
+    wordTimer = null;
+    if (deck.current?.id === id && id !== 'p20') deck.next(); // en la 20 se detiene
+  }, (WORD_SECONDS || 5) * 1000);
+}
+
+function cancelWordClock() {
+  clearTimeout(wordTimer);
+  wordTimer = null;
+}
+
+function toggleWords() {
+  wordsPaused = !wordsPaused;
+  if (wordsPaused) {
+    cancelWordClock();
+    wordSvg()?.pauseAnimations();
+  } else startWordClock();
+  room.setState({ wordsPaused });
+  hint(wordsPaused ? 'Avance de palabras en pausa (P para seguir).' : 'Avance de palabras reanudado.');
+}
+
+// Avanzar o retroceder a mano cancela el reloj de la palabra en curso.
+function manualNext() {
+  cancelWordClock();
+  deck.next();
+}
+
+function manualPrev() {
+  if (/^p\d\d$/.test(deck.current?.id || '')) {
+    wordsPaused = true;
+    room.setState({ wordsPaused });
+  }
+  cancelWordClock();
+  deck.prev();
+}
+
 function onBuilt(e) {
   const { node, instant } = e.detail;
+  if (node.id === 'word' && !instant) startWordClock(); // el reloj corre desde que se ven imagen y palabra
   node.querySelectorAll?.('[data-live="cmp-avg"]').forEach((n) => (instant ? null : countUp(n)));
   if (instant) return;
   if (node.dataset.live === 'podium') {
@@ -278,8 +404,9 @@ function bindKeys() {
   addEventListener('keydown', (e) => {
     if (e.target.closest?.('input, select, textarea')) return;
     const k = e.key;
-    if (['ArrowRight', 'ArrowDown', ' ', 'PageDown', 'Enter'].includes(k)) { e.preventDefault(); deck.next(); }
-    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { e.preventDefault(); deck.prev(); }
+    if (['ArrowRight', 'ArrowDown', ' ', 'PageDown', 'Enter'].includes(k)) { e.preventDefault(); manualNext(); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(k)) { e.preventDefault(); manualPrev(); }
+    else if (k === 'p' || k === 'P') toggleWords();
     else if (k === 'Home') deck.goto(0);
     else if (k === 'End') deck.goto(SLIDES.length - 1, { final: true });
     else if (k === 'f' || k === 'F') toggleFull();
@@ -288,7 +415,7 @@ function bindKeys() {
     else if (k === 'm' || k === 'M') $('setup').hidden = false;
   });
   $('viewport').addEventListener('click', (e) => {
-    if (e.button === 0) deck.next();
+    if (e.button === 0) manualNext();
   });
   let idle;
   addEventListener('mousemove', () => {
@@ -312,7 +439,7 @@ function toggleSound() {
   save({ sound: soundOn() });
   $('soundChk').checked = soundOn();
   $('hSound').innerHTML = icon(soundOn() ? 'sound' : 'mute', 20);
-  hint(soundOn() ? 'Sonidos encendidos' : 'Sonidos apagados', 1400);
+  hint(soundOn() ? 'Sonidos encendidos' : 'Sonidos apagados');
 }
 
 function openNotes() {
@@ -347,8 +474,9 @@ notesChan.onmessage = (e) => {
   const m = e.data || {};
   if (m.type === 'hello') postNotes();
   if (m.type === 'cmd' && deck) {
-    if (m.cmd === 'next') deck.next();
-    if (m.cmd === 'prev') deck.prev();
+    if (m.cmd === 'next') manualNext();
+    if (m.cmd === 'prev') manualPrev();
+    if (m.cmd === 'words') toggleWords();
   }
 };
 
@@ -361,8 +489,8 @@ $('hFull').innerHTML = icon('fullscreen', 20);
 $('hMenu').innerHTML = icon('qr', 20);
 for (const b of $('hud').querySelectorAll('button')) b.addEventListener('click', (e) => e.stopPropagation());
 $('hud').addEventListener('click', (e) => e.stopPropagation());
-$('hPrev').onclick = () => deck?.prev();
-$('hNext').onclick = () => deck?.next();
+$('hPrev').onclick = () => deck && manualPrev();
+$('hNext').onclick = () => deck && manualNext();
 $('hNotes').onclick = openNotes;
 $('hSound').onclick = toggleSound;
 $('hFull').onclick = toggleFull;

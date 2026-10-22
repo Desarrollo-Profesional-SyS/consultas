@@ -5,7 +5,7 @@ import { Room, joinUrl, timeLeft, isOpen } from './room.js';
 import { SLIDES } from './slides-data.js';
 import { notesOf, titleOf } from './deck.js';
 import { avatarSVG, AVATAR_COUNT } from './avatars.js';
-import { WORDS, N_WORDS, buildTable, stats, isCorrect, autoVerdict, answerKey, botSheet, fmtTime, escapeHtml, norm } from './game.js';
+import { WORDS, N_WORDS, buildTable, stats, isCorrect, autoVerdict, answerKey, botSheet, botAnswer, fmtTime, escapeHtml, norm, QUESTIONS, QUESTION_BY_SLIDE, summarize } from './game.js';
 
 const $ = (id) => document.getElementById(id);
 const tabEl = $('tab');
@@ -91,11 +91,11 @@ $('copyLink').onclick = async () => {
 };
 
 function render() {
-  const sig = JSON.stringify([tab, reviewRound, data.state, data.rounds, data.players, data.answers, data.overrides, data.kicked]);
+  const sig = JSON.stringify([tab, reviewRound, data.state, data.rounds, data.players, data.answers, data.overrides, data.kicked, data.q, data.qa, data.qhide]);
   if (sig === lastRender) return;
   lastRender = sig;
   const scroll = scrollY;
-  ({ live: renderLive, players: renderPlayers, review: renderReview, table: renderTable, rehearsal: renderRehearsal })[tab]();
+  ({ live: renderLive, players: renderPlayers, questions: renderQuestions, review: renderReview, table: renderTable, rehearsal: renderRehearsal })[tab]();
   scrollTo({ top: scroll });
 }
 
@@ -123,7 +123,9 @@ function renderLive() {
       <div class="card now-slide">
         <p class="kicker">En pantalla · ${idx + 1} de ${SLIDES.length}</p>
         <h2>${escapeHtml(titles[idx])}</h2>
-        <div class="notes">${escapeHtml(notesOf(slide)) || 'Sin notas.'}</div>
+        ${notesOf(slide) ? `<div class="notes">${escapeHtml(notesOf(slide))}</div>` : ''}
+        ${liveQuestionCard(slide.id)}
+        ${/^(reto|p\d\d)$/.test(slide.id) ? `<div class="row"><button class="btn small ${data.state?.wordsPaused ? '' : 'cream'}" id="words">${data.state?.wordsPaused ? '▶ Reanudar avance de palabras' : '⏸ Pausar avance de palabras'}</button><span class="muted">Igual que la tecla P de Joss.</span></div>` : ''}
         <p class="muted">Sigue: ${escapeHtml(titles[idx + 1] || '— fin —')}</p>
         <div class="row">
           <button class="btn small dark" id="prev">← Anterior</button>
@@ -150,6 +152,8 @@ function renderLive() {
         ${rd.status !== 'idle' ? '<button class="btn ghost small" id="reset">Reiniciar esta ronda (borra sus respuestas)</button>' : ''}
       </div>
     </div>`;
+  if ($('words')) $('words').onclick = () => room.sendCmd('words');
+  bindQuestionButtons();
   $('prev').onclick = () => room.sendCmd('prev');
   $('next').onclick = () => room.sendCmd('next');
   $('goto').onchange = (e) => { if (e.target.value) room.sendCmd('goto', e.target.value); e.target.value = ''; };
@@ -181,6 +185,59 @@ function tick() {
       t.classList.toggle('warn', left > 0 && left <= 30000);
     }
   }
+}
+
+// ---------- Preguntas en vivo ----------
+const Q_TITLES = { rating: 'Calificar tu memoria (1-10)', gancho: 'La última capacitación (texto)', cuarto: '¿Olvidaste a qué ibas? (Sí/No)', chunk: 'El número de 10 dígitos', olvido: '¿Cuánto olvidas en un día? (A-D)', 'mito-1': 'Mito 1 · releer', 'mito-2': 'Mito 2 · dormir', 'mito-3': 'Mito 3 · estilos', 'mito-4': 'Mito 4 · recordar sin ver', revela: '¿Por qué calcetines era el 2? (texto)', cierre: 'Cierre y muro (texto + área)' };
+
+function questionSummaryHtml(qid) {
+  const q = QUESTIONS[qid];
+  const sm = summarize(qid, data.qa?.[qid], rows, data.qhide?.[qid]);
+  const st = data.q?.[qid] || {};
+  const status = st.open ? '<span class="pill" style="background:var(--lime);color:var(--night)">ABIERTA</span>' : st.closedAt ? '<span class="pill">CERRADA</span>' : '<span class="pill">SIN ABRIR</span>';
+  let body = '';
+  if (q.type === 'scale') body = `<p class="lead">Promedio: <b>${sm.avg != null ? sm.avg.toFixed(1) : '—'}</b> de 10</p>`;
+  if (q.type === 'choice') body = `<div class="row">${q.options.map((o) => `<span class="pill">${escapeHtml(o.label)}: <b style="color:var(--cream)">${sm.byOption[o.id].length}</b></span>`).join('')}${q.correct ? `<span class="muted">Correcta: ${escapeHtml(q.options.find((o) => o.id === q.correct).label)}</span>` : ''}</div>`;
+  if (q.type === 'number') body = `<p class="lead">Lo recordaron completo: <b>${sm.ok.length}</b> · promedio de dígitos: <b>${sm.avgHits != null ? sm.avgHits.toFixed(1) : '—'}</b> de 10</p>`;
+  if (q.type === 'text') {
+    body = `<div class="answers-list">${sm.list.map((a) => `<button class="ans ${a.hidden ? 'no' : 'ok'}" data-hide="${qid}|${escapeHtml(a.id)}|${a.hidden ? 0 : 1}" title="${a.hidden ? 'Oculta · clic para mostrarla' : 'En pantalla · clic para ocultarla'}">${a.hidden ? '🙈' : '✓'} ${escapeHtml(a.v)} <small>${escapeHtml(a.name)}${a.area ? ' · ' + escapeHtml(a.area) : ''}</small></button>`).join('') || '<span class="muted">Sin respuestas todavía.</span>'}</div>
+      ${sm.list.length ? '<p class="muted">Toca una respuesta para ocultarla de la pantalla (o regresarla).</p>' : ''}`;
+  }
+  return `<div class="word" style="grid-template-columns:1fr">
+    <div class="row" style="justify-content:space-between">
+      <h4>${escapeHtml(Q_TITLES[qid] || qid)} ${status}</h4>
+      <div class="row">
+        <span class="muted"><b>${sm.count}</b> de ${rows.length} contestaron</span>
+        ${st.open ? `<button class="btn small pink" data-qclose="${qid}">Cerrar${q.correct ? ' y revelar' : ''}</button>` : `<button class="btn small" data-qopen="${qid}">${st.closedAt ? 'Reabrir' : 'Abrir'}</button>`}
+        <button class="btn small ghost" data-qreset="${qid}">Borrar votos</button>
+      </div>
+    </div>
+    ${body}
+  </div>`;
+}
+
+function liveQuestionCard(slideId) {
+  const qid = QUESTION_BY_SLIDE[slideId];
+  if (!qid) return '';
+  return `<div class="review" style="margin-top:4px"><p class="kicker">Pregunta de esta diapositiva</p>${questionSummaryHtml(qid)}</div>`;
+}
+
+function renderQuestions() {
+  tabEl.innerHTML = `<div class="card review">
+    <p class="lead">Las preguntas se abren solas al entrar a su diapositiva y se cierran al salir (o con el clic que revela la respuesta). Aquí puedes abrirlas o cerrarlas a mano y ocultar respuestas de texto antes de que salgan en pantalla. No suman puntos.</p>
+    ${Object.keys(QUESTIONS).map(questionSummaryHtml).join('')}
+  </div>`;
+  bindQuestionButtons();
+}
+
+function bindQuestionButtons() {
+  tabEl.querySelectorAll('[data-qopen]').forEach((b) => (b.onclick = () => room.openQuestion(b.dataset.qopen)));
+  tabEl.querySelectorAll('[data-qclose]').forEach((b) => (b.onclick = () => room.closeQuestion(b.dataset.qclose, { reveal: !!QUESTIONS[b.dataset.qclose].correct })));
+  tabEl.querySelectorAll('[data-qreset]').forEach((b) => (b.onclick = () => confirm('¿Borrar todos los votos de esta pregunta y dejarla sin abrir?') && room.resetQuestion(b.dataset.qreset)));
+  tabEl.querySelectorAll('[data-hide]').forEach((b) => (b.onclick = () => {
+    const [qid, uid, hide] = b.dataset.hide.split('|');
+    room.hideAnswer(qid, uid, hide === '1');
+  }));
 }
 
 // ---------- Jugadores ----------
@@ -310,8 +367,8 @@ function renderRehearsal() {
       </div>
       <div class="card">
         <h3 style="margin:0 0 8px">Empezar de cero</h3>
-        <p class="lead">Borra las respuestas de las dos rondas y deja los relojes sin empezar. Los jugadores siguen dentro.</p>
-        <button class="btn pink" id="wipe" style="margin-top:12px">Reiniciar las dos rondas</button>
+        <p class="lead">Borra las respuestas de las dos rondas y de todas las preguntas, y deja los relojes sin empezar. Los jugadores siguen dentro.</p>
+        <button class="btn pink" id="wipe" style="margin-top:12px">Reiniciar rondas y preguntas</button>
       </div>
     </div>`;
   $('addBots').onclick = addBots;
@@ -326,8 +383,8 @@ function renderRehearsal() {
     toast('Jugadores de prueba fuera');
   };
   $('wipe').onclick = async () => {
-    if (!confirm('¿Borrar las respuestas de las dos rondas?')) return;
-    await Promise.all([room.resetRound(1), room.resetRound(2), store.remove(room.p('results'))]);
+    if (!confirm('¿Borrar las respuestas de las dos rondas y de todas las preguntas?')) return;
+    await Promise.all([room.resetRound(1), room.resetRound(2), store.remove(room.p('results')), ...Object.keys(QUESTIONS).map((qid) => room.resetQuestion(qid))]);
     botsScheduled = {};
     toast('Rondas reiniciadas');
   };
@@ -347,6 +404,19 @@ function addBots() {
 function runBots() {
   const bots = Object.entries(data.players || {}).filter(([id, p]) => p?.bot && !data.kicked?.[id]);
   if (!bots.length) return;
+  for (const [qid, st] of Object.entries(data.q || {})) {
+    const key = `q-${qid}-${st?.openedAt}`;
+    if (!st?.open || botsScheduled[key]) continue;
+    botsScheduled[key] = true;
+    for (const [id] of bots) {
+      if (Math.random() < 0.12) continue; // algunos no contestan
+      botTimers.push(setTimeout(() => {
+        if (!data.q?.[qid]?.open) return;
+        const { v, ...extra } = botAnswer(qid);
+        room.answerQuestion(qid, v, extra, id);
+      }, 800 + Math.random() * 5000));
+    }
+  }
   for (const r of [1, 2]) {
     const rd = data.rounds?.[r];
     const key = `${r}-${rd?.startedAt}`;

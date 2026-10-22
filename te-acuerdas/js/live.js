@@ -4,7 +4,7 @@
 import { avatarSVG } from './avatars.js';
 import { animateIn } from './deck.js';
 import { qrSVG, sfx } from './fx.js';
-import { fmtTime, escapeHtml, N_WORDS } from './game.js';
+import { fmtTime, escapeHtml, N_WORDS, QUESTIONS } from './game.js';
 import { timeLeft } from './room.js';
 import { ROUND_SECONDS } from './config.js';
 
@@ -14,7 +14,7 @@ const memo = new WeakMap(); // estado por elemento (para no repetir animaciones)
 const $$ = (root, sel) => [...root.querySelectorAll(sel)];
 const one = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
-// data = { code, url, rows, players, stats: {1,2}, rounds, order2, best, answers }
+// data = { code, url, rows, players, stats: {1,2}, rounds, order2, best, answers, qs: { pregunta: resumen } }
 export function renderLive(el, data, { entering = false } = {}) {
   if (!el) return;
 
@@ -26,7 +26,7 @@ export function renderLive(el, data, { entering = false } = {}) {
   }
   for (const n of $$(el, '[data-live="room"]')) n.textContent = data.code ? `SALA ${data.code}` : 'SALA ····';
   for (const n of $$(el, '[data-live="join-url"]')) {
-    n.textContent = data.code ? '¿Estás en la compu? Abre el link del chat.' : '';
+    n.textContent = '¿En la compu? Abre el link que está en el chat.';
   }
 
   const joined = data.rows;
@@ -35,8 +35,10 @@ export function renderLive(el, data, { entering = false } = {}) {
   for (const n of $$(el, '[data-live="lobby-avatars"]')) lobbyAvatars(n, joined, entering);
 
   for (const n of $$(el, '[data-live="submitted"]')) {
-    const r = +n.dataset.round;
-    n.textContent = submittedText(r, data);
+    if (n.dataset.q) {
+      const sm = data.qs?.[n.dataset.q];
+      n.textContent = sm ? `${sm.count} de ${data.rows.length} ya contestaron` : '';
+    } else n.textContent = submittedText(+n.dataset.round, data);
   }
 
   for (const n of $$(el, '[data-live="range-count"]')) {
@@ -81,6 +83,7 @@ export function renderLive(el, data, { entering = false } = {}) {
   for (const n of $$(el, '[data-live="podium"]')) podium(n, data.rows);
   for (const n of $$(el, '[data-live="board-rest"]')) boardRest(n, data.rows);
 
+  renderQuestions(el, data, entering);
   updateTimers(el, data.rounds, data.now);
 }
 
@@ -255,4 +258,120 @@ export function countUp(n) {
     else n.textContent = one(v);
   };
   requestAnimationFrame(step);
+}
+
+// ---------- Preguntas en vivo ----------
+const ACCENTS = ['#C6F432', '#FF9F1C', '#FF3E8E', '#B69CFF', '#FFD23F', '#7FD3FF'];
+const pct = (n, total) => (total ? Math.round((n / total) * 100) : 0);
+
+function renderQuestions(el, data, entering) {
+  const qs = data.qs || {};
+  const sum = (n) => qs[n.dataset.q || 'rating'];
+
+  for (const n of $$(el, '[data-live="rating-avg"]')) {
+    const sm = qs.rating;
+    n.textContent = sm?.avg != null ? one(Math.round(sm.avg * 10) / 10) : '—';
+  }
+  for (const n of $$(el, '[data-live="rating-count"]')) {
+    const c = qs.rating?.count || 0;
+    n.textContent = `${c} ${c === 1 ? 'voto' : 'votos'}`;
+  }
+  for (const n of $$(el, '[data-live="rating-bars"]')) ratingBars(n, qs.rating);
+
+  for (const n of $$(el, '[data-live="poll"]')) pollRows(n, sum(n));
+  for (const n of $$(el, '[data-live="poll-option"]')) {
+    const sm = sum(n);
+    const v = sm?.byOption?.[n.dataset.option]?.length || 0;
+    const html = `${pct(v, sm?.count)}%<br><span style="font-size:22px">${v} ${v === 1 ? 'voto' : 'votos'}</span>`;
+    if (n.innerHTML !== html) n.innerHTML = html;
+  }
+  for (const n of $$(el, '[data-live="vote-count"]')) n.textContent = String(sum(n)?.byOption?.[n.dataset.option]?.length || 0);
+  for (const n of $$(el, '[data-live="vote-names"]')) voteNames(n, sum(n)?.byOption?.[n.dataset.option] || [], entering);
+
+  for (const n of $$(el, '[data-live="answers"]')) textAnswers(n, sum(n), entering);
+  for (const n of $$(el, '[data-live="answers-count"]')) {
+    const sm = sum(n);
+    const c = sm?.visible?.length || 0;
+    n.textContent = c > 12 ? `${c} respuestas · se ven las 12 más recientes` : c ? `${c} ${c === 1 ? 'respuesta' : 'respuestas'}` : 'Las respuestas aparecen aquí en cuanto las escriban.';
+  }
+
+  const ch = qs.chunk;
+  for (const n of $$(el, '[data-live="chunk-ok-count"]')) n.textContent = String(ch?.ok?.length || 0);
+  for (const n of $$(el, '[data-live="chunk-no-count"]')) n.textContent = String(Math.max(0, data.rows.length - (ch?.ok?.length || 0)));
+  for (const n of $$(el, '[data-live="chunk-ok"]')) voteNames(n, ch?.ok || [], entering, 14);
+  for (const n of $$(el, '[data-live="chunk-avg"]')) {
+    const a = ch?.avgHits;
+    const r = a == null ? null : Math.round(a);
+    n.textContent = r == null
+      ? 'Nadie contestó esta vez.'
+      : `En promedio le atinaron a ${r} de 10 dígitos.${r >= 5 && r <= 9 ? ' ¿Te suena el 7?' : ''}`;
+  }
+}
+
+function ratingBars(host, sm) {
+  const bins = sm?.bins || Array(10).fill(0);
+  const key = bins.join(',');
+  if (memo.get(host) === key) return;
+  memo.set(host, key);
+  const max = Math.max(1, ...bins);
+  host.innerHTML = bins.map((c, i) => `<div style="display:flex;flex-direction:column;align-items:center;gap:6px"><div style="width:26px;height:${Math.max(6, Math.round((c / max) * 110))}px;background:${i < 7 ? '#C6F432' : '#FF3E8E'};border:3px solid #07030D;border-radius:6px;transition:height .4s"></div><p style="font-size:18px;font-weight:800;color:#D9C9F2">${i + 1}</p></div>`).join('');
+}
+
+function pollRows(host, sm) {
+  const q = QUESTIONS[host.dataset.q];
+  if (!q) return;
+  const total = sm?.count || 0;
+  const key = q.options.map((o) => sm?.byOption?.[o.id]?.length || 0).join(',');
+  if (memo.get(host) === key) return;
+  memo.set(host, key);
+  const colors = ['#C6F432', '#B69CFF', '#FF9F1C', '#FF3E8E'];
+  host.innerHTML = q.options.map((o, i) => {
+    const v = sm?.byOption?.[o.id]?.length || 0;
+    const w = Math.round((pct(v, total) / 100) * 552);
+    return `<div style="display:flex;flex-direction:row;align-items:center;gap:18px"><p style="width:80px;font-family:'Bowlby One', Arial, sans-serif;font-size:36px;color:#FFF4E0">${escapeHtml(o.label)}</p><div style="width:560px;height:48px;background:#2A1745;border:4px solid #07030D;border-radius:999px;display:flex;flex-direction:row"><div style="width:${w}px;height:40px;background:${colors[i]};border-radius:999px;transition:width .5s"></div></div><p style="font-family:'Bowlby One', Arial, sans-serif;font-size:36px;color:${colors[i]}">${pct(v, total)}%</p></div>`;
+  }).join('');
+}
+
+function nameChip(a, size = 40, font = 24) {
+  return `<div data-id="${escapeHtml(a.id)}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:row;align-items:center;gap:8px;background:#3B1766;padding:4px 18px 4px 4px;border:3px solid #07030D;border-radius:999px">${avatarSVG(a.avatar, { size, title: a.name })}<p style="font-size:${font}px;font-weight:800;color:#FFF4E0;white-space:nowrap">${escapeHtml(a.name)}</p></div>`;
+}
+
+function voteNames(host, list, entering, max = 8) {
+  const shown = list.slice(0, max);
+  const key = shown.map((a) => a.id).join(',') + '|' + list.length;
+  if (memo.get(host) === key) return;
+  const before = new Set([...host.querySelectorAll('[data-id]')].map((c) => c.dataset.id));
+  memo.set(host, key);
+  host.innerHTML = shown.map((a) => nameChip(a)).join('') +
+    (list.length > max ? `<p style="font-size:24px;font-weight:800;padding:10px 18px;color:#160A26;background:#FFF4E0;border:3px solid #07030D;border-radius:999px">+${list.length - max} más</p>` : '');
+  host.querySelectorAll('[data-id]').forEach((c) => {
+    if (!before.has(c.dataset.id) && !entering) c.animate([{ opacity: 0, scale: '0.4' }, { opacity: 1, scale: '1' }], { duration: 380, easing: 'cubic-bezier(.2,1.4,.4,1)' });
+  });
+}
+
+function textAnswers(host, sm, entering) {
+  const cards = host.dataset.style === 'cards';
+  const max = +(host.dataset.max || (cards ? 12 : host.dataset.q === 'revela' ? 4 : 6));
+  const list = (sm?.visible || []).slice(0, max);
+  const key = list.map((a) => `${a.id}:${a.t}`).join(',');
+  if (memo.get(host) === key) return;
+  const before = new Set([...host.querySelectorAll('[data-id]')].map((c) => c.dataset.id + ':' + c.dataset.t));
+  memo.set(host, key);
+  host.innerHTML = list.map((a, i) => {
+    const accent = ACCENTS[i % ACCENTS.length];
+    const rot = i % 2 ? 1 : -1;
+    if (cards) {
+      return `<div data-id="${escapeHtml(a.id)}" data-t="${a.t}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:column;gap:12px;background:#FFF4E0;padding:18px 20px;border:4px solid #07030D;border-radius:22px;box-shadow:8px 8px 0px ${accent};transform:rotate(${rot * 0.8}deg)">
+        <p style="font-size:24px;font-weight:800;line-height:1.25;color:#160A26;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(a.v)}</p>
+        <div style="display:flex;flex-direction:row;align-items:center;gap:8px;flex-wrap:wrap">${avatarSVG(a.avatar, { size: 34, title: a.name })}<p style="font-size:20px;font-weight:800;color:#5B4B70">${escapeHtml(a.name)}</p>${a.area ? `<p style="font-size:18px;font-weight:800;color:#160A26;background:${accent};padding:4px 12px;border:2px solid #07030D;border-radius:999px">${escapeHtml(a.area)}</p>` : ''}</div>
+      </div>`;
+    }
+    return `<div data-id="${escapeHtml(a.id)}" data-t="${a.t}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:column;gap:10px;width:350px;background:#FFF4E0;padding:16px 20px;border:4px solid #07030D;border-radius:24px 24px 24px 6px;box-shadow:8px 8px 0px ${accent};transform:rotate(${rot}deg)">
+      <p style="font-size:26px;font-weight:800;line-height:1.2;color:#160A26;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(a.v)}</p>
+      <div style="display:flex;flex-direction:row;align-items:center;gap:8px">${avatarSVG(a.avatar, { size: 34, title: a.name })}<p style="font-size:22px;font-weight:800;color:#5B4B70">${escapeHtml(a.name)}</p></div>
+    </div>`;
+  }).join('');
+  host.querySelectorAll('[data-id]').forEach((c) => {
+    if (!entering && !before.has(c.dataset.id + ':' + c.dataset.t)) c.animate([{ opacity: 0, translate: '0 30px', scale: '0.8' }, { opacity: 1, translate: '0 0', scale: '1' }], { duration: 420, easing: 'cubic-bezier(.2,1.3,.4,1)' });
+  });
 }

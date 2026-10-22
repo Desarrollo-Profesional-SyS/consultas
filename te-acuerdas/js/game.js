@@ -8,18 +8,18 @@ export const WORDS = [
   { n: 3, word: 'Semáforo', why: 'Tres luces', accept: ['semaforo', 'semaforos'] },
   { n: 4, word: 'Carro', why: 'Cuatro llantas', accept: ['carro', 'carros', 'coche', 'coches', 'auto', 'autos', 'automovil', 'carrito'] },
   { n: 5, word: 'Estrella', why: 'Cinco picos', accept: ['estrella', 'estrellas'] },
-  { n: 6, word: 'Hormiga', why: 'Seis patas', accept: ['hormiga', 'hormigas'] },
+  { n: 6, word: 'Dado', why: 'Seis caras', accept: ['dado', 'dados'] },
   { n: 7, word: 'Arcoíris', why: 'Siete colores', accept: ['arcoiris', 'arco iris'] },
-  { n: 8, word: 'Pulpo', why: 'Ocho tentáculos', accept: ['pulpo', 'pulpos'] },
+  { n: 8, word: 'Infinito', why: 'Un 8 acostado', accept: ['infinito', 'simbolo de infinito', 'infinity', '∞', 'ocho acostado', '8 acostado'] },
   { n: 9, word: 'Bebé', why: 'Nueve meses de embarazo', accept: ['bebe', 'bebes', 'baby'] },
   { n: 10, word: 'Manos', why: 'Diez dedos', accept: ['manos', 'mano'] },
-  { n: 11, word: 'Balón', why: 'Once jugadores en la cancha', accept: ['balon', 'balones', 'pelota', 'pelotas', 'balon de futbol'] },
+  { n: 11, word: 'Windows', why: 'Windows 11', accept: ['windows', 'windows 11', 'computadora', 'compu', 'ventana', 'ventanas', 'pc'] },
   { n: 12, word: 'Reloj', why: 'Doce horas en la carátula', accept: ['reloj', 'relojes'] },
   { n: 13, word: 'Martes', why: 'Martes 13, día de mala suerte', accept: ['martes', 'martes 13'] },
   { n: 14, word: 'Corazón', why: '14 de febrero', accept: ['corazon', 'corazones'] },
   { n: 15, word: 'Vestido', why: 'Fiesta de XV años', accept: ['vestido', 'vestidos', 'vestido de xv'] },
-  { n: 16, word: 'Bandera', why: '16 de septiembre', accept: ['bandera', 'banderas', 'bandera de mexico'] },
-  { n: 17, word: 'Urna de votación', why: 'Voto de la mujer en México (17 de octubre de 1953)', accept: ['urna', 'urna de votacion', 'urna electoral', 'urna para votar', 'urnas'] },
+  { n: 16, word: 'iPhone', why: 'El iPhone 16', accept: ['iphone', 'iphone 16', 'celular', 'telefono', 'smartphone', 'cel'] },
+  { n: 17, word: 'Graduación', why: 'A los 17 sales de la prepa', accept: ['graduacion', 'birrete', 'toga', 'diploma', 'gorro de graduacion', 'graduarse'] },
   { n: 18, word: 'Credencial', why: 'Mayoría de edad para votar', accept: ['credencial', 'credencial para votar', 'credencial de elector', 'ine', 'credencial ine', 'credencial del ine', 'ife'] },
   { n: 19, word: 'Cubrebocas', why: 'COVID-19', accept: ['cubrebocas', 'cubreboca', 'cubre bocas', 'tapabocas', 'mascarilla', 'barbijo'] },
   { n: 20, word: 'Pies y manos', why: 'Veinte dedos', accept: ['pies y manos', 'manos y pies'] },
@@ -40,6 +40,7 @@ const STOP = new Set(['el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'de
 // "  Un SEMÁFORO!! " → "semaforo". Quita acentos, signos y artículos.
 export function norm(text) {
   return String(text ?? '')
+    .replace(/∞/g, ' infinito ')
     .toLowerCase()
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
@@ -195,6 +196,8 @@ export function bestGain(rows) {
 }
 
 // Etapas del juego según la diapositiva en pantalla (lo que ven los celulares).
+// Las diapositivas con pregunta las maneja QUESTIONS; antes del reto, por defecto,
+// el celular dice «Mira la pantalla».
 export const STAGE_BY_SLIDE = {
   sala: 'lobby',
   reto: 'watch',
@@ -212,10 +215,78 @@ export const STAGE_BY_SLIDE = {
 };
 for (let n = 1; n <= N_WORDS; n++) STAGE_BY_SLIDE['p' + String(n).padStart(2, '0')] = 'watch';
 
-export function stageFor(slideId, slideIndex, lobbyIndex) {
+export function stageFor(slideId, slideIndex, retoIndex) {
   if (STAGE_BY_SLIDE[slideId]) return STAGE_BY_SLIDE[slideId];
-  if (lobbyIndex >= 0 && slideIndex > lobbyIndex) return 'final';
+  if (retoIndex >= 0 && slideIndex > retoIndex) return 'final';
   return 'pre';
+}
+
+// ---------- Preguntas en vivo (no suman puntos al marcador de las 20 palabras) ----------
+// open: 'enter' = se abre al entrar a su diapositiva; 'manual' = la abre el código (chunk).
+// close: 'leave' = al salir de su diapositiva (o de closeAfter); un número = con ese clic de la diapositiva.
+export const CHUNK_NUMBER = '5518274390';
+export const AREAS = ['Eje Cursos', 'Recursos Humanos', 'Sistemas', 'Publicidad', 'Administración', 'Eje Empresas', 'Diseño', 'Ejecutiva Directiva'];
+const VF = [{ id: 'V', label: 'VERDADERO' }, { id: 'F', label: 'FALSO' }];
+
+export const QUESTIONS = {
+  rating: { slide: 'despierta', type: 'scale', min: 1, max: 10, prompt: 'Del 1 al 10, ¿qué tan buena crees que es tu memoria?', close: 'leave' },
+  gancho: { slide: 'gancho', type: 'text', max: 80, prompt: '¿Qué recuerdas de la última capacitación que tomaste?', close: 'leave' },
+  cuarto: { slide: 'miller', type: 'choice', options: [{ id: 'si', label: 'SÍ' }, { id: 'no', label: 'NO' }], prompt: '¿Alguna vez entraste a un cuarto y olvidaste a qué ibas?', close: 'leave' },
+  chunk: { slide: 'chunk', type: 'number', answer: CHUNK_NUMBER, prompt: '¿Cuál era el número?', open: 'manual', close: 'leave', resultSlide: 'chunk-res' },
+  olvido: {
+    slide: 'adivina', type: 'choice', prompt: 'Si no lo vuelves a ver, ¿cuánto olvidas en un día?', close: 2, correct: 'C',
+    options: [{ id: 'A', label: 'Una décima parte' }, { id: 'B', label: 'Una tercera parte' }, { id: 'C', label: 'Dos terceras partes' }, { id: 'D', label: 'Casi todo' }],
+  },
+  'mito-1': { slide: 'mito-1', type: 'choice', options: VF, correct: 'F', prompt: 'Releer mis apuntes es la mejor forma de estudiar.', close: 1 },
+  'mito-2': { slide: 'mito-2', type: 'choice', options: VF, correct: 'V', prompt: 'Dormir bien te ayuda a recordar lo que aprendiste.', close: 1 },
+  'mito-3': { slide: 'mito-3', type: 'choice', options: VF, correct: 'F', prompt: 'Aprendes mejor si te enseñan en tu estilo: visual o auditivo.', close: 1 },
+  'mito-4': { slide: 'mito-4', type: 'choice', options: VF, correct: 'V', prompt: 'Intentar recordar sin ver tus notas funciona mejor que releerlas.', close: 1 },
+  revela: { slide: 'revela', type: 'text', max: 80, prompt: '¿Por qué calcetines era el 2?', close: 'leave' },
+  cierre: { slide: 'cierre', type: 'text', max: 120, areas: AREAS, prompt: '¿Qué te cuesta recordar o enseñar en tu trabajo… y de qué lo podrías colgar?', close: 'leave', closeAfter: 'muro' },
+};
+
+// Diapositiva → pregunta que muestran los celulares mientras está en pantalla.
+export const QUESTION_BY_SLIDE = {};
+for (const [id, q] of Object.entries(QUESTIONS)) {
+  QUESTION_BY_SLIDE[q.slide] = id;
+  if (q.resultSlide) QUESTION_BY_SLIDE[q.resultSlide] = id;
+  if (q.closeAfter) QUESTION_BY_SLIDE[q.closeAfter] = id;
+}
+
+// El número de la prueba rápida: sin espacios, guiones ni puntos.
+export const digitsOnly = (v) => String(v ?? '').replace(/[\s.\-]/g, '').replace(/\D/g, '');
+
+// Cuántos dígitos están en su lugar y si lo recordó completo.
+export function chunkScore(value) {
+  const d = digitsOnly(value);
+  let hits = 0;
+  for (let i = 0; i < CHUNK_NUMBER.length; i++) if (d[i] === CHUNK_NUMBER[i]) hits++;
+  return { hits, ok: d === CHUNK_NUMBER };
+}
+
+// Resumen de una pregunta para pantallas y panel. answers = { uid: { v, area, t } }.
+export function summarize(qid, answers, rows, hidden = {}) {
+  const q = QUESTIONS[qid];
+  const ids = new Set(rows.map((r) => r.id));
+  const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
+  const list = Object.entries(answers || {})
+    .filter(([id, a]) => ids.has(id) && a && a.v !== undefined && a.v !== null && a.v !== '')
+    .map(([id, a]) => ({ id, ...a, name: byId[id].name, avatar: byId[id].avatar, hidden: !!hidden?.[id] }))
+    .sort((a, b) => (b.t || 0) - (a.t || 0));
+  const out = { q, count: list.length, total: rows.length, list };
+  if (q.type === 'scale') {
+    out.bins = Array.from({ length: q.max - q.min + 1 }, (_, i) => list.filter((a) => +a.v === q.min + i).length);
+    out.avg = list.length ? list.reduce((s, a) => s + +a.v, 0) / list.length : null;
+  } else if (q.type === 'choice') {
+    out.byOption = Object.fromEntries(q.options.map((o) => [o.id, list.filter((a) => a.v === o.id)]));
+  } else if (q.type === 'number') {
+    const scored = list.map((a) => ({ ...a, ...chunkScore(a.v) }));
+    out.ok = scored.filter((a) => a.ok);
+    out.avgHits = scored.length ? scored.reduce((s, a) => s + a.hits, 0) / scored.length : null;
+  } else if (q.type === 'text') {
+    out.visible = list.filter((a) => !a.hidden);
+  }
+  return out;
 }
 
 export const clampName = (s) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, 18);
@@ -247,4 +318,33 @@ export function botSheet(round, rand = Math.random) {
     else if (rand() < 0.25) sheet['w' + n] = WORDS[Math.floor(rand() * N_WORDS)].word.toLowerCase();
   }
   return sheet;
+}
+
+const BOT_TEXT = {
+  gancho: ['Excel con tablas dinámicas', 'Casi nada, la verdad', 'Que hay que hacer pausas activas', 'Algo de seguridad informática', 'El nombre del instructor', 'Que había café'],
+  revela: ['¡Porque son un par!', 'Dos pies, dos calcetines', 'Van en pares', 'Ni idea jaja', '¿Por el 2 de par?'],
+  cierre: ['Los pasos del proceso de ventas', 'Los nombres de los clientes nuevos', 'Las fechas de cierre del mes', 'Las contraseñas', 'El orden de la inducción'],
+};
+
+// Respuesta de práctica de un bot a una pregunta en vivo.
+export function botAnswer(qid, rand = Math.random) {
+  const q = QUESTIONS[qid];
+  const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+  if (q.type === 'scale') return { v: Math.max(1, Math.min(10, Math.round(4 + rand() * 4 + (rand() - 0.5) * 3))) };
+  if (q.type === 'number') {
+    const r = rand();
+    if (r < 0.3) return { v: CHUNK_NUMBER };
+    const d = CHUNK_NUMBER.split('');
+    for (let i = 0; i < d.length; i++) if (rand() < (i < 4 ? 0.15 : 0.5)) d[i] = String(Math.floor(rand() * 10));
+    return { v: d.join('') };
+  }
+  if (q.type === 'text') {
+    const a = { v: pick(BOT_TEXT[qid] || BOT_TEXT.gancho) };
+    if (q.areas) a.area = pick(q.areas);
+    return a;
+  }
+  if (qid === 'cuarto') return { v: rand() < 0.88 ? 'si' : 'no' };
+  if (qid === 'olvido') return { v: pick(['A', 'B', 'B', 'B', 'C', 'C', 'D']) };
+  const right = qid === 'mito-3' ? 0.45 : 0.7;
+  return { v: rand() < right ? q.correct : q.options.find((o) => o.id !== q.correct).id };
 }

@@ -12,6 +12,9 @@
 //   answers/{1|2}/{uid} { w1…w20, _t }
 //   overrides/{n}/{respuesta} true|false   correcciones de Alex
 //   results  { {uid}: { r1, r2, total, place, h1, h2, gain }, _meta: { … } }
+//   q/{pregunta} { open, openedAt, closedAt, revealed }   preguntas en vivo
+//   qa/{pregunta}/{uid} { v, area?, t }                    un voto o respuesta por persona
+//   qhide/{pregunta}/{uid} true                            respuestas de texto que Alex ocultó
 import { ROUND_SECONDS } from './config.js';
 import { shuffledOrder, clampName, answerKey } from './game.js';
 
@@ -113,6 +116,27 @@ export class Room {
   unkick(uid) { return this.store.remove(this.p(`kicked/${uid}`)); }
 
   publishResults(results) { return this.store.set(this.p('results'), results); }
+
+  // ---------- Preguntas en vivo ----------
+  openQuestion(qid) {
+    return this.store.update(this.p(`q/${qid}`), { open: true, openedAt: this.store.now(), closedAt: null });
+  }
+
+  closeQuestion(qid, { reveal = false } = {}) {
+    return this.store.update(this.p(`q/${qid}`), { open: false, closedAt: this.store.now(), ...(reveal ? { revealed: true } : {}) });
+  }
+
+  resetQuestion(qid) {
+    return this.store.update(this.p(), { [`q/${qid}`]: null, [`qa/${qid}`]: null, [`qhide/${qid}`]: null });
+  }
+
+  hideAnswer(qid, uid, hidden) {
+    return this.store.set(this.p(`qhide/${qid}/${uid}`), hidden ? true : null);
+  }
+
+  answerQuestion(qid, value, extra = {}, uid = this.store.uid) {
+    return this.store.set(this.p(`qa/${qid}/${uid}`), { v: value, ...extra, t: this.store.now() });
+  }
 
   // ---------- Jugadores ----------
   join(name, avatar, extra = {}) {

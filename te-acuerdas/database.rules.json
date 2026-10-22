@@ -72,6 +72,35 @@
               }
             }
           }
+        },
+        "q": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "qhide": {
+          ".read": "auth != null",
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())"
+        },
+        "qa": {
+          ".write": "auth != null && (root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())",
+          "$qid": {
+            "$uid": {
+              ".read": "auth != null && auth.uid === $uid",
+              ".write": "auth != null && ((auth.uid === $uid && root.child('rooms').child($room).child('q').child($qid).child('open').val() === true) || root.child('rooms').child($room).child('owner').val() === auth.uid || root.child('rooms').child($room).child('hosts').child(auth.uid).exists())",
+              "v": {
+                ".validate": "newData.isNumber() || (newData.isString() && newData.val().length <= 120)"
+              },
+              "area": {
+                ".validate": "newData.isString() && newData.val().length <= 40"
+              },
+              "t": {
+                ".validate": "newData.isNumber()"
+              },
+              "$other": {
+                ".validate": false
+              }
+            }
+          }
         }
       }
     }
