@@ -7,7 +7,9 @@
 
 ## Versiones editables
 
-El bot y el árbol de decisión se trabajan en dos documentos aparte, que comparten los mismos IDs de mensaje:
+La edición de los mensajes se hace en el chat; el bot y el árbol de decisión también están en dos documentos aparte. Los tres usan los mismos IDs de mensaje:
+
+- [Chat Manufactura y Calidad](https://claude.ai/artifact/8YjnVue58feVScUBv5Pq5C) (`chat-bot-editable.html`): los 36 mensajes como conversación de WhatsApp. Cada mensaje muestra su paso, cuándo sale, de dónde viene la decisión, la espera y qué pasa si el cliente responde o no. Todo se edita en el mismo chat y se guarda solo.
 
 - [Bot Manufactura y Calidad · Mensajes y tiempos](https://claude.ai/code/artifact/1038e24c-2194-4ac1-99a9-15a13cda525e): los 36 mensajes con su texto, botones, espera, condición y estado de revisión, además de FAQ, objeciones, plantillas de Meta, respuestas rápidas y configuración por etapa.
 - [Bot Manufactura y Calidad · Árbol de decisión](https://claude.ai/code/artifact/3b3b1835-fa39-4b66-81b2-aca7468d8ce0): los árboles A (primer contacto), B (pago y cierre) y C (seguimiento y salida), y la tabla de 43 transiciones.

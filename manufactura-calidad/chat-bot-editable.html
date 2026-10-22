@@ -1,0 +1,806 @@
+<title>Chat Manufactura y Calidad</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Layout: índice de etapas fijo a la izquierda y la conversación sobre fondo de chat; en teléfono el índice se vuelve una barra de etapas arriba. */
+:root {
+  --wall: #E6ECE8; --wall-dot: #D9E1DC; --panel: #F7F9F7; --line: #D2DBD6; --ink: #16201C; --muted: #59675F;
+  --out: #D4EFE2; --out-line: #B2DEC8; --ase: #DCE6F8; --ase-line: #BACBEC; --in: #FFFFFF; --in-line: #DFE5E1;
+  --btn: #FFFFFF; --accent: #0A7A62; --accent-ink: #FFFFFF; --pill: #FFF0C7; --pill-ink: #654E0E; --sys: #E9E4F7; --sys-ink: #463A78;
+  --mark: #FFE39A; --mark-ink: #573F00; --var: #E4E0FF; --var-ink: #382C9C;
+  --warn: #9A4700; --warn-bg: #FFE8D4; --danger: #B3261E; --ok: #1C7A3C; --ok-bg: #DAF2E2; --chg: #A3271D; --chg-bg: #FCE1DD; --rev: #4A5961; --rev-bg: #E9EEF0;
+  --font: 'Instrument Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r: 14px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --wall: #0D1412; --wall-dot: #131C19; --panel: #111916; --line: #26322D; --ink: #E3ECE7; --muted: #93A39C;
+    --out: #113E32; --out-line: #1C5646; --ase: #192C47; --ase-line: #284369; --in: #1A2421; --in-line: #28332F;
+    --btn: #1A2421; --accent: #4BCDAC; --accent-ink: #05261D; --pill: #393013; --pill-ink: #F1D68B; --sys: #2A2545; --sys-ink: #CFC6FF;
+    --mark: #594611; --mark-ink: #FFE6A1; --var: #343066; --var-ink: #D2CBFF;
+    --warn: #FFB073; --warn-bg: #40250E; --danger: #FF8A80; --ok: #7EDB9D; --ok-bg: #153322; --chg: #FFA69C; --chg-bg: #481D19; --rev: #A8B5B0; --rev-bg: #212B28;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --wall: #0D1412; --wall-dot: #131C19; --panel: #111916; --line: #26322D; --ink: #E3ECE7; --muted: #93A39C;
+  --out: #113E32; --out-line: #1C5646; --ase: #192C47; --ase-line: #284369; --in: #1A2421; --in-line: #28332F;
+  --btn: #1A2421; --accent: #4BCDAC; --accent-ink: #05261D; --pill: #393013; --pill-ink: #F1D68B; --sys: #2A2545; --sys-ink: #CFC6FF;
+  --mark: #594611; --mark-ink: #FFE6A1; --var: #343066; --var-ink: #D2CBFF;
+  --warn: #FFB073; --warn-bg: #40250E; --danger: #FF8A80; --ok: #7EDB9D; --ok-bg: #153322; --chg: #FFA69C; --chg-bg: #481D19; --rev: #A8B5B0; --rev-bg: #212B28;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--wall); color: var(--ink); font: 15px/1.45 var(--font); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+
+.app { display: grid; grid-template-columns: 1fr; min-height: 100%; }
+@media (min-width: 1000px) { .app { grid-template-columns: 280px minmax(0, 1fr); } }
+
+/* Rail */
+.rail { display: none; }
+@media (min-width: 1000px) {
+  .rail { display: flex; flex-direction: column; gap: 20px; position: sticky; top: env(safe-area-inset-top, 0px); align-self: start;
+    height: calc(100vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px)); overflow-y: auto;
+    background: var(--panel); border-right: 1px solid var(--line); padding-block: 24px; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: 20px; }
+}
+.rail h2 { margin: 0 0 8px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.stages { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.stages a { display: grid; grid-template-columns: 42px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 8px; color: var(--ink); text-decoration: none; font-size: 14px; }
+.stages a:hover { background: var(--wall); }
+.stages .k { font: 500 12px var(--mono); color: var(--muted); }
+.stages .dots { display: flex; gap: 3px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--rev); opacity: .45; }
+.dot.cambiar { background: var(--chg); opacity: 1; }
+.dot.aprobado { background: var(--ok); opacity: 1; }
+.hours { font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+.hours b { color: var(--ink); font-weight: 600; }
+.legend { display: grid; gap: 8px; font-size: 13px; color: var(--muted); }
+.legend span { display: flex; align-items: center; gap: 8px; }
+.sw { width: 22px; height: 14px; border-radius: 4px; border: 1px solid var(--line); flex: none; }
+.sw-in { background: var(--in); } .sw-out { background: var(--out); border-color: var(--out-line); } .sw-ase { background: var(--ase); border-color: var(--ase-line); }
+.sw-pill { background: var(--pill); } .sw-sys { background: var(--sys); }
+
+/* Main */
+.main { min-width: 0; display: flex; flex-direction: column; }
+.top { background: var(--panel); padding-block: 18px 4px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--panel); border-bottom: 1px solid var(--line);
+  padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--panel); }
+.top-in, .bar-in { max-width: 820px; margin: 0 auto; display: grid; gap: 10px; }
+.bar-in { gap: 8px; }
+.title-row { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; }
+h1 { margin: 0; font-size: 21px; font-weight: 700; letter-spacing: -.01em; text-wrap: balance; }
+.save { font: 500 12px var(--mono); color: var(--muted); }
+.save.err { color: var(--danger); }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.seg button { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 4px 11px; font-size: 13px; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.seg .n { font: 500 11.5px var(--mono); opacity: .75; font-variant-numeric: tabular-nums; }
+.search { flex: 1 1 180px; min-width: 0; border: 1px solid var(--line); background: var(--wall); border-radius: 999px; padding: 5px 12px; font-size: 13.5px; }
+.ghost { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+.ghost:hover { background: var(--wall); }
+@media (max-width: 700px) {
+  .seg { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+  .seg::-webkit-scrollbar { display: none; }
+  .seg button { flex: none; }
+}
+.stagebar { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; margin: 0 -2px; padding: 2px; }
+.stagebar::-webkit-scrollbar { display: none; }
+.stagebar a { flex: none; font: 500 12px var(--mono); color: var(--ink); text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; background: var(--wall); }
+@media (min-width: 1000px) { .stagebar { display: none; } }
+.help { margin: 0; font-size: 13px; color: var(--muted); max-width: 70ch; }
+.notice { margin: 0; font-size: 13.5px; padding: 8px 12px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); }
+
+.chat { max-width: 820px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 22px;
+  padding-block: 24px 80px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background-image: radial-gradient(var(--wall-dot) 1px, transparent 1.2px); background-size: 18px 18px; }
+
+/* Stage divider */
+.stage { display: grid; justify-items: center; gap: 6px; text-align: center; padding-top: 10px; scroll-margin-top: 130px; }
+.stage-chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 14px; font-weight: 600; font-size: 14px; }
+.stage-chip .k { font: 600 12.5px var(--mono); color: var(--accent); margin-right: 6px; }
+.stage p { margin: 0; max-width: 60ch; font-size: 13px; color: var(--muted); }
+.flags { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.flags span { border: 1px dashed var(--line); border-radius: 6px; padding: 1px 7px; }
+
+/* Message group */
+.msg { display: flex; flex-direction: column; gap: 8px; scroll-margin-top: 130px; }
+.msg.flash .bubble { box-shadow: 0 0 0 3px var(--accent); }
+textarea.f, input.f { border: 1px solid transparent; background: transparent; border-radius: 6px; padding: 1px 4px; margin: -2px -5px; width: calc(100% + 10px); resize: none; line-height: inherit; field-sizing: content; min-height: 1.5em; overflow: hidden; }
+textarea.f:hover:not([readonly]), input.f:hover:not([readonly]) { border-color: var(--line); background: color-mix(in srgb, var(--panel) 60%, transparent); }
+textarea.f:focus, input.f:focus { border-color: var(--accent); background: var(--panel); outline: none; }
+textarea.f::placeholder, input.f::placeholder { color: var(--muted); opacity: .7; font-style: italic; }
+
+/* Origin: client bubble (left) or system pill (center) */
+.origin { display: flex; }
+.origin.in { justify-content: flex-start; }
+.origin.sys { justify-content: center; }
+.in-bubble { width: min(440px, 80%); background: var(--in); border: 1px solid var(--in-line); border-radius: 4px var(--r) var(--r) var(--r); padding: 8px 12px 9px; display: grid; gap: 4px; }
+.in-bubble .f-origin { font-style: italic; }
+.pill { width: min(520px, 92%); border-radius: 12px; padding: 7px 12px; display: grid; gap: 3px; font-size: 13.5px; text-align: center; }
+.origin.tiempo .pill { background: var(--pill); color: var(--pill-ink); }
+.origin.sistema .pill { background: var(--sys); color: var(--sys-ink); }
+.pill textarea.f { text-align: center; }
+.who { font: 600 11px var(--mono); letter-spacing: .04em; text-transform: uppercase; opacity: .8; display: inline-flex; align-items: center; gap: 5px; }
+.pill .who { justify-content: center; }
+.from { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; color: var(--muted); }
+.pill .from { justify-content: center; color: inherit; opacity: .85; }
+.from > span { flex: none; font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.from textarea.f { font: 600 12.5px var(--mono); width: auto; min-width: 4ch; max-width: 100%; }
+.pill .from textarea.f { text-align: left; }
+
+/* Outgoing */
+.out { align-self: flex-end; width: min(600px, 92%); display: grid; gap: 6px; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; justify-content: flex-end; }
+.step { font: 600 13px var(--mono); background: var(--ink); color: var(--panel); border-radius: 6px; padding: 1px 7px; }
+.tag { font-size: 12px; border-radius: 6px; padding: 1px 7px; border: 1px solid var(--line); background: var(--panel); color: var(--muted); }
+.tag.mkt { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.tag.utl { background: var(--var); color: var(--var-ink); border-color: transparent; }
+.tag.new { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.tag.edit { border-style: dashed; color: var(--ink); }
+.estado { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 8px; border: 1px solid transparent; cursor: pointer; }
+.estado.por_revisar { background: var(--rev-bg); color: var(--rev); }
+.estado.cambiar { background: var(--chg-bg); color: var(--chg); }
+.estado.aprobado { background: var(--ok-bg); color: var(--ok); }
+.st { font: 500 11px var(--mono); color: var(--muted); min-width: 1ch; }
+.st.err { color: var(--danger); }
+.sale { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px; align-items: baseline; font-size: 13px; color: var(--muted); }
+.sale .lab, .cond dt { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .04em; display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+.sale textarea.f { color: var(--ink); }
+
+.bubble { background: var(--out); border: 1px solid var(--out-line); border-radius: var(--r) 4px var(--r) var(--r); padding: 9px 13px 8px; display: grid; gap: 6px; transition: box-shadow .3s; }
+.bubble.ase { background: var(--ase); border-color: var(--ase-line); }
+.media { display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); background: color-mix(in srgb, var(--panel) 70%, transparent); border-radius: 8px; padding: 7px 9px; }
+.body-view { white-space: normal; overflow-wrap: anywhere; cursor: text; border-radius: 6px; margin: -2px -5px; padding: 1px 4px; border: 1px solid transparent; }
+.body-view:hover { border-color: var(--line); }
+.ro .body-view { cursor: default; } .ro .body-view:hover { border-color: transparent; }
+.body-view .empty { color: var(--muted); font-style: italic; }
+.body-edit { font-size: 15px; }
+.var { background: var(--var); color: var(--var-ink); border-radius: 4px; padding: 0 3px; font: 500 13px var(--mono); }
+mark.ph { background: var(--mark); color: var(--mark-ink); border-radius: 4px; padding: 0 2px; }
+.url { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.b-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; font: 400 11px var(--mono); color: var(--muted); }
+.b-foot .over, .cnt.over { color: var(--danger); font-weight: 600; }
+.warns { margin: 0; padding: 6px 9px; list-style: none; border-radius: 8px; background: var(--warn-bg); color: var(--warn); font-size: 12.5px; display: grid; gap: 2px; }
+
+.btns { display: grid; gap: 4px; }
+.wbtn { position: relative; display: flex; align-items: center; background: var(--btn); border: 1px solid var(--in-line); border-radius: 10px; padding: 6px 10px; }
+.wbtn input { flex: 1; min-width: 0; border: 0; background: transparent; text-align: center; color: var(--accent); font-weight: 600; font-size: 14.5px; padding: 1px 54px 1px 54px; }
+.wbtn input:focus { outline: none; }
+.wbtn:focus-within { border-color: var(--accent); }
+.wbtn .cnt { position: absolute; right: 34px; font: 400 10.5px var(--mono); color: var(--muted); }
+.wbtn .x { position: absolute; right: 6px; width: 24px; height: 24px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; }
+.wbtn .x:hover { background: var(--chg-bg); color: var(--chg); }
+.add-btn { justify-self: end; border: 1px dashed var(--line); background: transparent; color: var(--muted); border-radius: 8px; padding: 2px 10px; font-size: 12.5px; cursor: pointer; }
+.add-btn:hover { color: var(--accent); border-color: var(--accent); }
+.btn-note { margin: 0; font-size: 12px; color: var(--muted); text-align: right; }
+
+.cond { margin: 0; display: grid; gap: 4px; font-size: 13.5px; background: color-mix(in srgb, var(--panel) 75%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; }
+.cond > div { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 8px; align-items: baseline; }
+.cond dt { color: var(--muted); }
+.cond dd { margin: 0; min-width: 0; }
+.cond .yes dt { color: var(--ok); } .cond .no dt { color: var(--chg); }
+@media (max-width: 520px) { .cond > div { grid-template-columns: 1fr; gap: 0; } }
+.comment { margin: 0; font-size: 13px; padding: 7px 10px; border-radius: 8px; background: var(--mark); color: var(--mark-ink); }
+.comment b { font-weight: 600; }
+
+details.more { font-size: 13.5px; }
+details.more > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; text-align: right; list-style: none; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary span { border-bottom: 1px dotted var(--muted); }
+details[open].more > summary { margin-bottom: 8px; }
+.more-in { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 12px; }
+.grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px; }
+@media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
+.grid label { display: grid; gap: 3px; font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); min-width: 0; }
+.grid label.wide { grid-column: 1 / -1; }
+.grid input, .grid select, .grid textarea { font: 400 13.5px var(--font); text-transform: none; letter-spacing: 0; color: var(--ink); border: 1px solid var(--line); background: var(--wall); border-radius: 8px; padding: 5px 8px; width: 100%; min-width: 0; }
+.grid textarea { resize: vertical; field-sizing: content; min-height: 2.2em; }
+.orig { border-top: 1px dashed var(--line); padding-top: 10px; display: grid; gap: 6px; }
+.orig h4 { margin: 0; font: 600 11px var(--mono); text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.orig .txt { white-space: pre-wrap; font-size: 13.5px; background: var(--wall); border-radius: 8px; padding: 8px 10px; }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.acts button, .confirm button { border: 1px solid var(--line); background: var(--panel); border-radius: 8px; padding: 4px 11px; font-size: 13px; cursor: pointer; }
+.acts button:hover { border-color: var(--accent); color: var(--accent); }
+.acts .danger, .confirm .danger { color: var(--danger); }
+.confirm .danger { background: var(--danger); color: var(--panel); border-color: var(--danger); }
+.confirm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; font-size: 13px; color: var(--danger); }
+
+.empty-state { display: grid; gap: 14px; }
+.skel { height: 64px; border-radius: var(--r); background: var(--panel); opacity: .6; }
+.skel.r { align-self: flex-end; width: min(560px, 86%); } .skel.l { width: min(380px, 70%); height: 40px; }
+.empty-state p { margin: 0; text-align: center; color: var(--muted); font-size: 14px; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 8px 14px; border-radius: 10px; font-size: 13.5px; z-index: 20; }
+svg.i { width: 13px; height: 13px; flex: none; }
+</style>
+
+<div class="app">
+  <aside class="rail" aria-label="Índice">
+    <div>
+      <h2>Etapas</h2>
+      <ul class="stages" id="rail-stages"></ul>
+    </div>
+    <div>
+      <h2>Cómo leerlo</h2>
+      <div class="legend">
+        <span><i class="sw sw-in"></i>Lo que hace el cliente</span>
+        <span><i class="sw sw-pill"></i>Pasa el tiempo sin respuesta</span>
+        <span><i class="sw sw-sys"></i>Lo decide el asesor o el CRM</span>
+        <span><i class="sw sw-out"></i>Mensaje del bot</span>
+        <span><i class="sw sw-ase"></i>Mensaje del asesor</span>
+      </div>
+    </div>
+    <div>
+      <h2>Horario</h2>
+      <div class="hours">
+        <span><b>Atención:</b> lunes a viernes y domingo de 7:00 a 22:00; sábado de 8:00 a 22:00.</span>
+        <span><b>Seguimientos automáticos:</b> lunes a viernes de 8:30 a 21:00; sábado de 9:00 a 21:00; domingo de 9:30 a 20:00.</span>
+        <span><b>Respuesta a quien escribe:</b> las 24 h.</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="top">
+      <div class="top-in">
+        <div class="title-row">
+          <h1>Bot Manufactura y Calidad · Conversación</h1>
+          <span class="save" id="save" aria-live="polite"></span>
+        </div>
+        <p class="help">Toca cualquier texto para editarlo: el mensaje, los botones, cuándo sale, la espera y qué pasa si responde o no. Los cambios se guardan solos y los ve todo el equipo.</p>
+        <p class="notice" id="notice" hidden></p>
+      </div>
+    </header>
+    <div class="bar">
+      <div class="bar-in">
+        <div class="tools">
+          <div class="seg" id="filters" role="group" aria-label="Filtrar por estado"></div>
+          <input class="search" id="q" type="search" placeholder="Buscar paso o texto" aria-label="Buscar paso o texto">
+          <button class="ghost" id="copy" type="button">Copiar como texto</button>
+        </div>
+        <nav class="stagebar" id="stagebar" aria-label="Etapas"></nav>
+      </div>
+    </div>
+
+    <section class="chat" id="chat" aria-label="Conversación">
+      <div class="empty-state" id="empty">
+        <div class="skel l"></div><div class="skel r"></div><div class="skel l"></div><div class="skel r"></div>
+        <p id="empty-msg">Cargando la conversación…</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const chat = $('#chat');
+  const ESTADOS = { por_revisar: 'Por revisar', cambiar: 'Cambiar', aprobado: 'Aprobado' };
+  const EMOJI = /\p{Extended_Pictographic}/u;
+  const ICON = {
+    clock: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6.2"/><path d="M8 4.6V8l2.4 1.6"/></svg>',
+    gear: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="2.3"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4 5 11M11 5l1.4-1.4"/></svg>',
+    person: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="5.4" r="2.8"/><path d="M2.6 14c.6-2.8 2.8-4.3 5.4-4.3s4.8 1.5 5.4 4.3"/></svg>',
+    send: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M2 8h9M8 4.5 11.5 8 8 11.5"/><path d="M14 3v10"/></svg>',
+    wait: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 2h8M4 14h8M5 2c0 3 6 3 6 6s-6 3-6 6M11 2c0 3-6 3-6 6s6 3 6 6"/></svg>',
+    yes: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 8.5 3 3 7-7"/></svg>',
+    no: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m4 4 8 8M12 4l-8 8"/></svg>',
+    clip: '<svg class="i" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10.5 4.5 5.6 9.4a1.6 1.6 0 0 0 2.3 2.3l5-5a3 3 0 0 0-4.3-4.3l-5 5a4.4 4.4 0 0 0 6.2 6.2l4.2-4.2"/></svg>',
+  };
+
+  const S = {
+    db: null, user: null, uid: null, canWrite: true,
+    msgs: new Map(), etapas: [], loaded: false,
+    pending: new Map(), status: new Map(), open: new Set(), confirm: null,
+    filter: 'todos', q: '', needsRender: false, focusNew: null,
+  };
+
+  // ---------- formatting ----------
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const vars = h => h.replace(/\{\{\s*([^}]+?)\s*\}\}/g, '<span class="var">{{$1}}</span>');
+  function fmt(s) {
+    if (!s) return '';
+    const urls = [];
+    let t = s.replace(/(?:https?:\/\/)?(?:[a-z0-9-]+\.)+(?:com|mx|me|org|net)(?:\.[a-z]{2})?(?:\/[^\s]*)?/gi, m => { urls.push(m); return '\u0001' + (urls.length - 1) + '\u0002'; });
+    let h = vars(esc(t));
+    h = h.replace(/\[([^\]\n]+)\]/g, '<mark class="ph">[$1]</mark>');
+    h = h.replace(/\*([^*\n]+)\*/g, '<strong>$1</strong>');
+    h = h.replace(/(^|[\s(>])_([^_\n]+)_(?=$|[\s).,!?<])/gm, '$1<em>$2</em>');
+    h = h.replace(/~([^~\n]+)~/g, '<s>$1</s>');
+    h = h.replace(/\u0001(\d+)\u0002/g, (_, i) => '<span class="url">' + vars(esc(urls[+i])) + '</span>');
+    return h.replace(/\n/g, '<br>');
+  }
+  const limits = m => m.canal === 'plantilla' ? { body: 1024, btn: 25 } : { body: 4096, btn: 20 };
+  function checks(m) {
+    const L = limits(m), b = m.cuerpo || '', bt = m.botones || [], w = [];
+    if (b.length > L.body) w.push(`El texto pasa de ${L.body} caracteres, el máximo de WhatsApp para este tipo de mensaje.`);
+    if (m.canal === 'plantilla') {
+      const t = b.trim();
+      if (/^\{\{\s*\d+\s*\}\}/.test(t) || /\{\{\s*\d+\s*\}\}\W*$/.test(t)) w.push('Meta rechaza plantillas que empiezan o terminan con una variable.');
+      if (bt.some(x => EMOJI.test(x))) w.push('Los botones de una plantilla no aceptan emoji.');
+    }
+    if (bt.length > 3) w.push('WhatsApp muestra hasta 3 botones de respuesta.');
+    bt.forEach(x => { if (x.length > L.btn) w.push(`El botón «${x}» pasa de ${L.btn} caracteres.`); });
+    if (bt.some(x => !x.trim())) w.push('Hay un botón vacío.');
+    return { w, ph: (b.match(/\[[^\]\n]+\]/g) || []).length, L };
+  }
+  const edited = m => m.propuesta && ['cuerpo', 'botones', 'sale', 'espera', 'si_responde', 'no_responde', 'origen', 'viene_de']
+    .some(k => JSON.stringify(m[k] ?? '') !== JSON.stringify(m.propuesta[k] ?? ''));
+
+  // ---------- rendering ----------
+  const ta = (m, f, label, ph = '', cls = '') =>
+    `<textarea class="f ${cls}" rows="1" data-f="${f}" aria-label="${esc(label)} · ${esc(m.paso)}" placeholder="${esc(ph)}"${S.canWrite ? '' : ' readonly'}>${esc(m[f])}</textarea>`;
+
+  function originHTML(m) {
+    const t = m.origen_tipo || 'cliente';
+    const from = `<div class="from"><span>Viene de</span>${ta(m, 'viene_de', 'Paso del que viene', 'paso')}</div>`;
+    if (t === 'cliente') {
+      return `<div class="origin in"><div class="in-bubble"><span class="who">${ICON.person} Cliente</span>${ta(m, 'origen', 'Qué hace el cliente', '¿Qué escribe o pulsa el cliente?', 'f-origin')}${from}</div></div>`;
+    }
+    const who = t === 'tiempo' ? `${ICON.clock} Pasa el tiempo` : `${ICON.gear} Asesor o CRM`;
+    return `<div class="origin sys ${t}"><div class="pill"><span class="who">${who}</span>${ta(m, 'origen', 'Qué lo dispara', '¿Qué lo dispara?')}${from}</div></div>`;
+  }
+
+  function cardHTML(m) {
+    const { w, ph, L } = checks(m);
+    const ro = !S.canWrite;
+    const bt = m.botones || [];
+    const kind = m.actor === 'asesor' ? 'ase' : 'bot';
+    const tags = [
+      `<span class="step">${esc(m.paso || '—')}</span>`,
+      `<span class="tag">${m.actor === 'asesor' ? 'Asesor' : 'Bot'}</span>`,
+      m.canal === 'plantilla'
+        ? `<span class="tag ${m.categoria === 'UTILITY' ? 'utl' : 'mkt'}">Plantilla · ${m.categoria === 'UTILITY' ? 'Utilidad' : 'Marketing'}</span>`
+        : `<span class="tag">Sesión 24 h</span>`,
+      m.etiqueta ? `<span class="tag">${esc(m.etiqueta)}</span>` : '',
+      !m.propuesta ? '<span class="tag new">Nuevo</span>' : (edited(m) ? '<span class="tag edit">Editado</span>' : ''),
+    ].join('');
+    const estado = `<select class="estado ${esc(m.estado || 'por_revisar')}" data-f="estado" aria-label="Estado de ${esc(m.paso)}"${ro ? ' disabled' : ''}>` +
+      Object.entries(ESTADOS).map(([v, t]) => `<option value="${v}"${(m.estado || 'por_revisar') === v ? ' selected' : ''}>${t}</option>`).join('') + '</select>';
+    const st = S.status.get(m._k) || '';
+    const byline = m.editado_por ? `<span class="st by" data-uid="${esc(m.editado_por)}" data-at="${esc(m.editado_en || '')}"></span>` : '';
+
+    const btns = bt.map((b, i) => `<div class="wbtn"><input class="f-btn" data-f="botones" data-i="${i}" value="${esc(b)}" maxlength="60" aria-label="Botón ${i + 1} de ${esc(m.paso)}"${ro ? ' readonly' : ''}><span class="cnt${b.length > L.btn ? ' over' : ''}">${b.length}/${L.btn}</span>${ro ? '' : `<button type="button" class="x" data-act="del-btn" data-i="${i}" aria-label="Quitar el botón ${i + 1}">×</button>`}</div>`).join('');
+    const addBtn = !ro && bt.length < 3 ? '<button type="button" class="add-btn" data-act="add-btn">+ Botón</button>' : '';
+    const btnNote = bt.length && m.canal !== 'plantilla' ? '<p class="btn-note">Botones interactivos: requieren desarrollo en el CRM. Mientras tanto se envían como opciones dentro del texto.</p>' : '';
+
+    const foot = [
+      m.plantilla ? `<span>${esc(m.plantilla)}</span>` : '',
+      ph ? `<span>${ph} ${ph === 1 ? 'dato' : 'datos'} por completar</span>` : '',
+      `<span class="cnt-body${(m.cuerpo || '').length > L.body ? ' over' : ''}">${(m.cuerpo || '').length}/${L.body}</span>`,
+    ].join('');
+
+    const etOpts = S.etapas.map(e => `<option value="${esc(e.clave)}"${e.clave === m.etapa ? ' selected' : ''}>${esc(e.clave)} · ${esc(e.nombre)}</option>`).join('');
+    const sel = (f, opts) => `<select data-f="${f}"${ro ? ' disabled' : ''}>` + opts.map(([v, t]) => `<option value="${v}"${(m[f] || '') === v ? ' selected' : ''}>${t}</option>`).join('') + '</select>';
+    const fld = (f, label, wide = true) => `<label class="${wide ? 'wide' : ''}">${label}<textarea data-f="${f}" rows="1"${ro ? ' readonly' : ''}>${esc(m[f])}</textarea></label>`;
+    const inp = (f, label) => `<label>${label}<input data-f="${f}" value="${esc(m[f])}"${ro ? ' readonly' : ''}></label>`;
+
+    let orig = '';
+    if (m.propuesta && edited(m)) {
+      const p = m.propuesta;
+      orig = `<div class="orig"><h4>Propuesta original</h4><div class="txt">${esc(p.cuerpo)}</div>` +
+        (p.botones?.length ? `<div class="txt">Botones: ${p.botones.map(esc).join(' · ')}</div>` : '') +
+        `<div class="txt">Sale: ${esc(p.sale)}\nEspera: ${esc(p.espera)}\nSi responde: ${esc(p.si_responde || '—')}\nSi no responde: ${esc(p.no_responde || '—')}</div>` +
+        (ro ? '' : '<div class="acts"><button type="button" data-act="restore">Restaurar la propuesta original</button></div>') + '</div>';
+    }
+    const confirm = S.confirm === m._k
+      ? `<div class="confirm"><span>¿Eliminar ${esc(m.paso)}? No se puede deshacer.</span><button type="button" data-act="cancel-del">Cancelar</button><button type="button" class="danger" data-act="del">Eliminar</button></div>`
+      : '';
+
+    return `<article class="msg${ro ? ' ro' : ''}" id="m-${esc(m._k)}" data-k="${esc(m._k)}">
+      ${originHTML(m)}
+      <div class="out">
+        <div class="meta">${tags}${estado}<span class="st${st === 'error' ? ' err' : ''}" data-st="${esc(m._k)}">${stText(st)}</span>${byline}</div>
+        <div class="sale"><span class="lab">${ICON.send} Sale</span>${ta(m, 'sale', 'Cuándo sale', '¿Cuándo sale?')}</div>
+        <div class="bubble ${kind}">
+          ${m.adjunto ? `<div class="media">${ICON.clip}<span>${esc(m.adjunto)}</span></div>` : ''}
+          <div class="body-view" tabindex="0" role="button" aria-label="Editar el texto de ${esc(m.paso)}">${fmt(m.cuerpo) || '<span class="empty">Escribe el mensaje…</span>'}</div>
+          <textarea class="f body-edit" data-f="cuerpo" rows="3" hidden aria-label="Texto de ${esc(m.paso)}"${ro ? ' readonly' : ''}>${esc(m.cuerpo)}</textarea>
+          <div class="b-foot">${foot}</div>
+          ${w.length ? `<ul class="warns">${w.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+        </div>
+        ${bt.length || addBtn ? `<div class="btns">${btns}${addBtn}</div>` : ''}
+        ${btnNote}
+        <dl class="cond">
+          <div><dt>${ICON.wait} Espera</dt><dd>${ta(m, 'espera', 'Espera', 'Sin espera')}</dd></div>
+          <div class="yes"><dt>${ICON.yes} Si responde</dt><dd>${ta(m, 'si_responde', 'Si responde', 'Sin condición')}</dd></div>
+          <div class="no"><dt>${ICON.no} Si no responde</dt><dd>${ta(m, 'no_responde', 'Si no responde', 'Sin condición')}</dd></div>
+        </dl>
+        ${m.comentario ? `<p class="comment"><b>Comentario:</b> ${esc(m.comentario)}</p>` : ''}
+        <details class="more"${S.open.has(m._k) ? ' open' : ''}>
+          <summary><span>Detalles del paso, comentario y acciones</span></summary>
+          <div class="more-in">
+            <div class="grid">
+              ${inp('paso', 'Paso')}
+              <label>Etapa<select data-f="etapa"${ro ? ' disabled' : ''}>${etOpts}</select></label>
+              <label>Quién lo envía${sel('actor', [['bot', 'Bot'], ['asesor', 'Asesor']])}</label>
+              <label>De dónde viene${sel('origen_tipo', [['cliente', 'El cliente escribe o pulsa'], ['tiempo', 'Pasa el tiempo'], ['sistema', 'El asesor o el CRM']])}</label>
+              <label>Tipo de mensaje${sel('canal', [['sesion', 'Sesión (dentro de 24 h)'], ['plantilla', 'Plantilla de Meta']])}</label>
+              <label>Categoría de plantilla${sel('categoria', [['', '—'], ['UTILITY', 'Utilidad'], ['MARKETING', 'Marketing']])}</label>
+              ${inp('plantilla', 'Nombre de la plantilla')}
+              ${inp('etiqueta', 'Etiqueta')}
+              ${fld('ventana', 'Horario en que puede salir')}
+              ${fld('adjunto', 'Adjunto (imagen, audio o documento)')}
+              ${fld('variables', 'Variables de la plantilla')}
+              ${fld('por_que', 'Por qué funciona')}
+              ${fld('nota', 'Nota técnica')}
+              ${fld('comentario', 'Comentario para el equipo')}
+            </div>
+            ${orig}
+            ${ro ? '' : '<div class="acts"><button type="button" data-act="add-after">+ Agregar mensaje después</button><button type="button" class="danger" data-act="ask-del">Eliminar mensaje</button></div>'}
+            ${confirm}
+          </div>
+        </details>
+      </div>
+    </article>`;
+  }
+
+  const NEED_AUTOSIZE = !(window.CSS && CSS.supports && CSS.supports('field-sizing', 'content'));
+  function autosize(el) {
+    if (!NEED_AUTOSIZE || el.tagName !== 'TEXTAREA' || el.hidden) return;
+    el.style.height = 'auto'; el.style.height = (el.scrollHeight + 2) + 'px';
+  }
+  const autosizeAll = (root = chat) => { if (NEED_AUTOSIZE) $$('textarea', root).forEach(autosize); };
+
+  const stText = s => ({ pend: 'sin guardar', saving: 'guardando…', saved: 'guardado', error: 'no se guardó' }[s] || '');
+
+  function visible(m) {
+    if (S.filter !== 'todos' && (m.estado || 'por_revisar') !== S.filter) return false;
+    if (!S.q) return true;
+    const q = S.q.toLowerCase();
+    return [m.paso, m.cuerpo, m.origen, m.viene_de, (m.botones || []).join(' '), m.comentario].some(x => String(x || '').toLowerCase().includes(q));
+  }
+
+  function grouped() {
+    const by = new Map(S.etapas.map(e => [e.clave, []]));
+    const loose = [];
+    [...S.msgs.values()].sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0)).forEach(m => (by.get(m.etapa) || loose).push(m));
+    const out = S.etapas.map(e => ({ e, list: by.get(e.clave) }));
+    if (loose.length) out.push({ e: { clave: '?', nombre: 'Sin etapa', objetivo: '' }, list: loose });
+    return out;
+  }
+
+  const anchor = clave => 'etapa-' + String(clave).toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+  function render() {
+    S.needsRender = false;
+    const groups = grouped();
+    // counts
+    const all = [...S.msgs.values()];
+    const count = k => all.filter(m => (m.estado || 'por_revisar') === k).length;
+    $('#filters').innerHTML = [['todos', 'Todos', all.length], ...Object.entries(ESTADOS).map(([k, t]) => [k, t, count(k)])]
+      .map(([k, t, n]) => `<button type="button" data-filter="${k}" aria-pressed="${S.filter === k}">${t}<span class="n">${n}</span></button>`).join('');
+    $('#rail-stages').innerHTML = groups.map(({ e, list }) =>
+      `<li><a href="#${anchor(e.clave)}" data-jump="${anchor(e.clave)}"><span class="k">${esc(e.clave)}</span><span>${esc(e.nombre)}</span><span class="dots">${list.map(m => `<i class="dot ${esc(m.estado || 'por_revisar')}" title="${esc(m.paso)}"></i>`).join('')}</span></a></li>`).join('');
+    $('#stagebar').innerHTML = groups.map(({ e }) => `<a href="#${anchor(e.clave)}" data-jump="${anchor(e.clave)}">${esc(e.clave)} ${esc(e.nombre)}</a>`).join('');
+
+    if (!S.loaded) return;
+    let html = '';
+    for (const { e, list } of groups) {
+      const vis = list.filter(visible);
+      if (!vis.length) continue;
+      const flags = [e.reloj, e.solo_horario ? `Solo en horario: ${e.solo_horario}` : '', e.detener ? `Se detiene si responde: ${e.detener}` : '']
+        .filter(Boolean).map(x => `<span>${esc(x)}</span>`).join('');
+      html += `<div class="stage" id="${anchor(e.clave)}"><span class="stage-chip"><span class="k">${esc(e.clave)}</span>${esc(e.nombre)}</span>${e.objetivo ? `<p>${esc(e.objetivo)}</p>` : ''}${flags ? `<div class="flags">${flags}</div>` : ''}</div>`;
+      html += vis.map(cardHTML).join('');
+    }
+    if (!html) {
+      html = `<div class="empty-state"><p>${S.msgs.size ? 'Ningún mensaje coincide con el filtro o la búsqueda.' : 'Todavía no hay mensajes. En cuanto se carguen, aparecen aquí como conversación.'}</p></div>`;
+    }
+    chat.innerHTML = html;
+    autosizeAll();
+    fillBylines();
+    if (S.focusNew && S.msgs.has(S.focusNew)) {
+      const card = document.getElementById('m-' + S.focusNew);
+      S.focusNew = null;
+      if (card) { card.scrollIntoView({ block: 'center' }); openBody(card); }
+    }
+  }
+
+  async function fillBylines() {
+    const els = $$('.st.by', chat);
+    if (!els.length) return;
+    const ids = [...new Set(els.map(el => el.dataset.uid))];
+    let ps = {};
+    try { ps = S.user ? await S.user.profiles(ids) : {}; } catch (_) {}
+    const df = new Intl.DateTimeFormat('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    for (const el of els) {
+      const name = ps[el.dataset.uid]?.name || 'Alguien del equipo';
+      const at = +el.dataset.at;
+      el.textContent = `· ${name}${at ? ', ' + df.format(new Date(at)) : ''}`;
+    }
+  }
+
+  function setStatus(k, st) {
+    if (st) S.status.set(k, st); else S.status.delete(k);
+    const el = chat.querySelector(`[data-st="${CSS.escape(k)}"]`);
+    if (el) { el.textContent = stText(st); el.classList.toggle('err', st === 'error'); }
+    const vals = [...S.status.values()];
+    const g = $('#save');
+    if (vals.includes('error')) { g.textContent = 'Hay cambios sin guardar'; g.classList.add('err'); }
+    else if (vals.some(v => v === 'pend' || v === 'saving')) { g.textContent = 'Guardando…'; g.classList.remove('err'); }
+    else { g.textContent = S.loaded && S.canWrite ? 'Todo guardado' : ''; g.classList.remove('err'); }
+  }
+
+  // ---------- writes ----------
+  function queue(k, patch, now = false) {
+    if (!S.db || !S.canWrite) return;
+    const p = S.pending.get(k) || { patch: {}, timer: 0, inflight: false };
+    Object.assign(p.patch, patch);
+    S.pending.set(k, p);
+    const m = S.msgs.get(k);
+    if (m) Object.assign(m, patch);
+    clearTimeout(p.timer);
+    setStatus(k, 'pend');
+    p.timer = setTimeout(() => flush(k), now ? 0 : 900);
+  }
+
+  async function flush(k, retried = false) {
+    const p = S.pending.get(k);
+    if (!p || p.inflight) return;
+    clearTimeout(p.timer);
+    const patch = p.patch;
+    if (!Object.keys(patch).length) { S.pending.delete(k); return; }
+    p.patch = {};
+    p.inflight = true;
+    setStatus(k, 'saving');
+    const body = { ...patch, editado_en: Date.now() };
+    if (S.uid) body.editado_por = S.uid;
+    let retry = false;
+    try {
+      await S.db.doc('mensajes/' + k).update(body);
+      setStatus(k, 'saved');
+      setTimeout(() => { if (S.status.get(k) === 'saved') setStatus(k, ''); }, 2500);
+    } catch (e) {
+      p.patch = { ...patch, ...p.patch };
+      if (e?.code === 'unavailable' && !retried) retry = true;
+      else {
+        setStatus(k, 'error');
+        if (e?.code === 'invalid_argument') readOnly('No tienes permiso para editar esta conversación. Pide acceso de colaborador para hacer cambios.');
+        else if (e?.code === 'quota_exceeded') toast('La base de datos llegó a su límite; no se guardó el cambio.');
+        else toast('No se pudo guardar. Revisa tu conexión y vuelve a intentarlo.');
+      }
+    } finally {
+      p.inflight = false;
+      if (retry) setTimeout(() => flush(k, true), 600 + Math.random() * 900);
+      else if (Object.keys(p.patch).length && S.status.get(k) !== 'error') p.timer = setTimeout(() => flush(k), 900);
+      else if (!Object.keys(p.patch).length) S.pending.delete(k);
+    }
+  }
+
+  function readOnly(msg) {
+    S.canWrite = false;
+    const n = $('#notice'); n.textContent = msg; n.hidden = false;
+    render();
+  }
+
+  let toastT = 0;
+  function toast(t) {
+    let el = $('.toast');
+    if (!el) { el = document.createElement('div'); el.className = 'toast'; el.setAttribute('role', 'status'); document.body.appendChild(el); }
+    el.textContent = t; el.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 2600);
+  }
+
+  // ---------- editing ----------
+  const editing = () => { const a = document.activeElement; return a && chat.contains(a) && a.matches('textarea, input'); };
+  const keyOf = el => el.closest('.msg')?.dataset.k;
+
+  function openBody(card) {
+    if (!S.canWrite) return;
+    const v = $('.body-view', card), t = $('.body-edit', card);
+    v.hidden = true; t.hidden = false; autosize(t); t.focus();
+    t.setSelectionRange(t.value.length, t.value.length);
+  }
+
+  function refreshBodyMeta(card, m) {
+    const { w, ph, L } = checks(m);
+    const c = $('.cnt-body', card);
+    if (c) { c.textContent = `${(m.cuerpo || '').length}/${L.body}`; c.classList.toggle('over', (m.cuerpo || '').length > L.body); }
+    let ul = $('.warns', card);
+    if (w.length) {
+      if (!ul) { ul = document.createElement('ul'); ul.className = 'warns'; $('.bubble', card).appendChild(ul); }
+      ul.innerHTML = w.map(x => `<li>${esc(x)}</li>`).join('');
+    } else if (ul) ul.remove();
+  }
+
+  chat.addEventListener('input', ev => {
+    const el = ev.target, k = keyOf(el), f = el.dataset.f;
+    if (!k || !f || el.tagName === 'SELECT') return;
+    autosize(el);
+    const card = el.closest('.msg'), m = S.msgs.get(k);
+    if (f === 'botones') {
+      const arr = $$('.f-btn', card).map(x => x.value);
+      queue(k, { botones: arr });
+      const cnt = el.parentElement.querySelector('.cnt'), L = limits(m);
+      cnt.textContent = `${el.value.length}/${L.btn}`; cnt.classList.toggle('over', el.value.length > L.btn);
+      refreshBodyMeta(card, m);
+    } else {
+      queue(k, { [f]: el.value });
+      if (f === 'cuerpo') refreshBodyMeta(card, m);
+    }
+  });
+
+  chat.addEventListener('change', ev => {
+    const el = ev.target, k = keyOf(el), f = el.dataset.f;
+    if (!k || !f || el.tagName !== 'SELECT') return;
+    queue(k, { [f]: el.value }, true);
+    render();
+    const again = chat.querySelector(`#m-${CSS.escape(k)} select[data-f="${f}"]`);
+    if (again) again.focus(); else if (f === 'etapa') toast('El mensaje se movió a la etapa ' + el.value + '.');
+  });
+
+  chat.addEventListener('focusout', ev => {
+    const el = ev.target, k = keyOf(el);
+    if (k && S.pending.has(k)) flush(k);
+    if (el.classList?.contains('body-edit')) {
+      const card = el.closest('.msg'), v = $('.body-view', card);
+      v.innerHTML = fmt(el.value) || '<span class="empty">Escribe el mensaje…</span>';
+      el.hidden = true; v.hidden = false;
+    }
+    setTimeout(() => { if (S.needsRender && !editing()) render(); }, 0);
+  });
+
+  chat.addEventListener('keydown', ev => {
+    const el = ev.target;
+    if (el.classList?.contains('body-view') && (ev.key === 'Enter' || ev.key === ' ')) { ev.preventDefault(); openBody(el.closest('.msg')); }
+    if (el.classList?.contains('body-edit') && ev.key === 'Escape') el.blur();
+    if (el.classList?.contains('f-btn') && ev.key === 'Enter') el.blur();
+  });
+
+  chat.addEventListener('toggle', ev => {
+    const d = ev.target; if (!d.matches?.('details.more')) return;
+    const k = keyOf(d); if (!k) return;
+    d.open ? S.open.add(k) : S.open.delete(k);
+    if (d.open) autosizeAll(d);
+  }, true);
+
+  chat.addEventListener('click', async ev => {
+    const view = ev.target.closest('.body-view');
+    if (view) { openBody(view.closest('.msg')); return; }
+    const b = ev.target.closest('[data-act]'); if (!b) return;
+    const k = keyOf(b), m = S.msgs.get(k); if (!m) return;
+    const act = b.dataset.act;
+    if (act === 'add-btn') {
+      const arr = [...(m.botones || []), 'Nuevo botón'];
+      queue(k, { botones: arr }, true); render();
+      const inp = chat.querySelector(`#m-${CSS.escape(k)} .f-btn[data-i="${arr.length - 1}"]`);
+      if (inp) { inp.focus(); inp.select(); }
+    } else if (act === 'del-btn') {
+      const arr = [...(m.botones || [])]; arr.splice(+b.dataset.i, 1);
+      queue(k, { botones: arr }, true); render();
+    } else if (act === 'restore') {
+      const p = m.propuesta; if (!p) return;
+      queue(k, { cuerpo: p.cuerpo, botones: p.botones || [], sale: p.sale, espera: p.espera, si_responde: p.si_responde, no_responde: p.no_responde, origen: p.origen, viene_de: p.viene_de }, true);
+      render(); toast(`${m.paso} volvió a la propuesta original.`);
+    } else if (act === 'ask-del') {
+      S.confirm = k; render();
+    } else if (act === 'cancel-del') {
+      S.confirm = null; render();
+    } else if (act === 'del') {
+      S.confirm = null;
+      try { await S.db.doc('mensajes/' + k).delete(); toast(`${m.paso} se eliminó.`); }
+      catch (e) { toast('No se pudo eliminar. Vuelve a intentarlo.'); }
+    } else if (act === 'add-after') {
+      const same = [...S.msgs.values()].filter(x => x.etapa === m.etapa).sort((a, c) => a.orden - c.orden);
+      const next = same[same.indexOf(m) + 1];
+      const orden = next ? (m.orden + next.orden) / 2 : m.orden + 10;
+      const nk = 'n' + Date.now().toString(36);
+      const doc = {
+        paso: 'Nuevo', etapa: m.etapa, orden, actor: 'bot', canal: 'sesion', categoria: '', plantilla: '', etiqueta: '',
+        origen_tipo: 'cliente', origen: '', viene_de: m.paso, sale: '', espera: '', si_responde: '', no_responde: '',
+        ventana: '', adjunto: '', cuerpo: '', botones: [], variables: '', por_que: '', nota: '',
+        estado: 'por_revisar', comentario: '', propuesta: null, editado_en: Date.now(),
+      };
+      if (S.uid) doc.editado_por = S.uid;
+      try {
+        await S.db.doc('mensajes/' + nk).set(doc);
+        S.focusNew = nk;
+        S.msgs.set(nk, { ...doc, _k: nk });
+        render();
+      } catch (e) {
+        toast(e?.code === 'quota_exceeded' ? 'La base de datos llegó a su límite; no se agregó el mensaje.' : 'No se pudo agregar el mensaje.');
+      }
+    }
+  });
+
+  // ---------- header controls ----------
+  $('#filters').addEventListener('click', ev => {
+    const b = ev.target.closest('[data-filter]'); if (!b) return;
+    S.filter = b.dataset.filter; render();
+  });
+  let qT = 0;
+  $('#q').addEventListener('input', ev => { clearTimeout(qT); qT = setTimeout(() => { S.q = ev.target.value.trim(); render(); }, 200); });
+  document.addEventListener('click', ev => {
+    const a = ev.target.closest('[data-jump]'); if (!a) return;
+    ev.preventDefault();
+    if (S.filter !== 'todos' || S.q) { S.filter = 'todos'; S.q = ''; $('#q').value = ''; render(); }
+    document.getElementById(a.dataset.jump)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  function asText() {
+    const lines = [];
+    for (const { e, list } of grouped()) {
+      if (!list.length) continue;
+      lines.push(`=== ${e.clave} · ${e.nombre} ===`, '');
+      for (const m of list) {
+        const who = m.origen_tipo === 'cliente' ? 'Cliente' : m.origen_tipo === 'tiempo' ? 'Pasa el tiempo' : 'Asesor o CRM';
+        lines.push(`[${who}] ${m.origen || ''} (viene de ${m.viene_de || '—'})`);
+        const tipo = m.canal === 'plantilla' ? `Plantilla ${m.categoria === 'UTILITY' ? 'de utilidad' : 'de marketing'}${m.plantilla ? ' ' + m.plantilla : ''}` : 'Sesión';
+        lines.push(`${m.paso} · ${m.actor === 'asesor' ? 'Asesor' : 'Bot'} · ${tipo} · ${ESTADOS[m.estado || 'por_revisar']}`);
+        lines.push(`Sale: ${m.sale || '—'}`);
+        if (m.adjunto) lines.push(`Adjunto: ${m.adjunto}`);
+        lines.push('', m.cuerpo || '', '');
+        if ((m.botones || []).length) lines.push(`Botones: ${m.botones.join(' | ')}`);
+        lines.push(`Espera: ${m.espera || '—'}`, `Si responde: ${m.si_responde || '—'}`, `Si no responde: ${m.no_responde || '—'}`);
+        if (m.comentario) lines.push(`Comentario: ${m.comentario}`);
+        lines.push('', '---', '');
+      }
+    }
+    return lines.join('\n');
+  }
+  $('#copy').addEventListener('click', async () => {
+    const text = asText();
+    try { await navigator.clipboard.writeText(text); toast('Conversación copiada como texto.'); }
+    catch (_) {
+      const t = document.createElement('textarea'); t.value = text; t.style.position = 'fixed'; t.style.opacity = '0';
+      document.body.appendChild(t); t.select();
+      try { document.execCommand('copy'); toast('Conversación copiada como texto.'); } catch (_) { toast('No se pudo copiar automáticamente.'); }
+      t.remove();
+    }
+  });
+
+  // ---------- data ----------
+  function onMsgs(snap) {
+    const next = new Map();
+    for (const d of snap.docs) {
+      const k = d.id, data = { ...d.data(), _k: k };
+      const p = S.pending.get(k);
+      if (p) Object.assign(data, p.patch);
+      next.set(k, data);
+    }
+    S.msgs = next;
+    if (!snap.metadata.fromCache || snap.size) S.loaded = true;
+    if (S.loaded && !S.msgs.size) $('#empty-msg') && ($('#empty-msg').textContent = 'Todavía no hay mensajes cargados.');
+    if (editing()) S.needsRender = true; else render();
+    setStatus('', '');
+  }
+  function onEtapas(snap) {
+    S.etapas = snap.docs.map(d => d.data()).sort((a, b) => (a.orden ?? 0) - (b.orden ?? 0));
+    if (editing()) S.needsRender = true; else render();
+  }
+  function onErr(e) {
+    if (e?.code === 'revoked') readOnly('Esta vista ya no tiene acceso a los datos.');
+    else { const n = $('#notice'); n.textContent = 'Se perdió la conexión con los datos. Recarga la página para ver los cambios más recientes.'; n.hidden = false; }
+  }
+
+  async function start() {
+    const c = window.claude;
+    const db = c?.use ? await c.use('db') : null;
+    if (!db) {
+      $('#empty-msg').textContent = 'Abre esta página desde claude.ai con tu cuenta para ver y editar la conversación.';
+      return;
+    }
+    S.db = db;
+    const user = await c.use('user');
+    S.user = user;
+    if (user) {
+      try { S.uid = await user.id(); } catch (_) {}
+      try { if ((await user.can('data.write')) === false) { S.canWrite = false; const n = $('#notice'); n.textContent = 'Solo lectura: pide acceso de colaborador para editar los mensajes.'; n.hidden = false; } } catch (_) {}
+    }
+    db.collection('etapas').limit(100).onSnapshot(onEtapas, onErr);
+    db.collection('mensajes').orderBy('orden').limit(500).onSnapshot(onMsgs, onErr);
+  }
+  render();
+  start();
+})();
+</script>
