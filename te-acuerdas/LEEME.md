@@ -104,7 +104,7 @@ Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final
 - **Duración de las rondas y de cada palabra:** `ROUND_SECONDS` y `WORD_SECONDS` en `js/config.js`.
 - **Palabras, sinónimos y explicaciones:** `WORDS` en `js/game.js`.
 - **Preguntas en vivo (textos, opciones, respuesta correcta, áreas):** `QUESTIONS` en `js/game.js`.
-- **Guion de Joss y Alex y ganchos por área:** `GUION` y `AREA_HOOKS` en `js/guion.js`.
+- **Guion de Joss y Alex y ganchos por área:** `GUION` y `AREA_HOOKS` en `js/guion.js`. El mismo guion, para imprimir, está en `guion/Guion-Te-acuerdas.pdf`; si lo cambias, vuelve a generarlo con `node tools/guion-pdf.mjs`.
 - **Cerebros y colores de los avatares:** `AVATARS` y `COLORS` en `js/avatars.js`. **Reacciones y sonidos:** `REACTIONS` y `sfx` en `js/fx.js`.
 - **El PDF del recuerdo:** `js/recuerdo.js`.
 - **Diapositivas:** edita `slides/<id>.html` (el orden está en `slides/deck.json`) y corre `node tools/build-slides.mjs`. Los elementos con `data-live="…"` los llena el juego con datos reales.
@@ -121,4 +121,5 @@ node vendor.mjs                       # vuelve a copiar Firebase, jsPDF + html2c
 cd .. && npx http-server -p 8080 -c-1 .
 node tools/e2e.mjs                    # ensayo automático: Joss + Alex + 3 celulares + 25 bots, las 61 diapositivas, notas por clic, reacciones y PDF
 node tools/responsive.mjs             # revisa que nada se salga de la pantalla en celulares de 320 a 768 px, acostados, tablet y compu
+node tools/guion-pdf.mjs              # vuelve a generar guion/Guion-Te-acuerdas.pdf desde js/guion.js
 ```
