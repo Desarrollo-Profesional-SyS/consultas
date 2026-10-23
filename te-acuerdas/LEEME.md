@@ -120,4 +120,5 @@ cd te-acuerdas/tools && npm install   # solo herramientas; la página no necesit
 node vendor.mjs                       # vuelve a copiar Firebase, jsPDF + html2canvas, QR, fuentes e íconos
 cd .. && npx http-server -p 8080 -c-1 .
 node tools/e2e.mjs                    # ensayo automático: Joss + Alex + 3 celulares + 25 bots, las 61 diapositivas, notas por clic, reacciones y PDF
+node tools/responsive.mjs             # revisa que nada se salga de la pantalla en celulares de 320 a 768 px, acostados, tablet y compu
 ```

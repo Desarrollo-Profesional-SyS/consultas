@@ -120,11 +120,12 @@ export class Room {
 
   // ---------- Preguntas en vivo ----------
   openQuestion(qid) {
-    return this.store.update(this.p(`q/${qid}`), { open: true, openedAt: this.store.now(), closedAt: null });
+    return this.store.update(this.p(`q/${qid}`), { open: true, openedAt: this.store.now(), closedAt: null, left: null });
   }
 
-  closeQuestion(qid, { reveal = false } = {}) {
-    return this.store.update(this.p(`q/${qid}`), { open: false, closedAt: this.store.now(), ...(reveal ? { revealed: true } : {}) });
+  // left = se cerró solo porque la presentación avanzó más allá (si se regresa a ella, se reabre).
+  closeQuestion(qid, { reveal = false, left = false } = {}) {
+    return this.store.update(this.p(`q/${qid}`), { open: false, closedAt: this.store.now(), left: left || null, ...(reveal ? { revealed: true } : {}) });
   }
 
   resetQuestion(qid) {

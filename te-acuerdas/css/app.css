@@ -3,9 +3,10 @@ body { min-height: 100dvh; background: radial-gradient(circle at 85% 0%, var(--g
 
 .phone { width: min(520px, 100%); margin: 0 auto; padding: 18px 16px 120px; display: flex; flex-direction: column; gap: 18px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; }
-.brand { font-family: var(--display); font-size: 22px; color: var(--lime); text-shadow: 2px 2px 0 var(--pink); letter-spacing: .5px; }
-.me { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: var(--cream); max-width: 60%; }
-.me span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand { font-family: var(--display); font-size: clamp(16px, 5.6vw, 22px); color: var(--lime); text-shadow: 2px 2px 0 var(--pink); letter-spacing: .5px; white-space: nowrap; flex-shrink: 0; }
+.me { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 15px; color: var(--cream); max-width: 55%; min-width: 0; }
+.me > svg { flex-shrink: 0; }
+.me span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 13px; letter-spacing: 1px; padding: 6px 12px; border-radius: 999px; background: var(--plum); color: var(--mist); border: 2px solid var(--grape); }
 
 .screen { display: flex; flex-direction: column; gap: 18px; animation: in .35s ease-out; }
@@ -136,7 +137,7 @@ body { min-height: 100dvh; background: radial-gradient(circle at 85% 0%, var(--g
 .table td { padding: 6px 8px; border-bottom: 1px solid var(--plum); vertical-align: middle; }
 .table td.num { font-variant-numeric: tabular-nums; font-weight: 800; text-align: right; }
 .who { display: flex; align-items: center; gap: 8px; font-weight: 700; }
-.who .av { width: 36px; height: 36px; }
+.who .av { width: 36px; height: 36px; flex-shrink: 0; }
 .review { display: flex; flex-direction: column; gap: 12px; }
 .review .word { display: grid; grid-template-columns: 160px 1fr; gap: 12px; align-items: start; background: var(--plum); border-radius: 16px; padding: 12px; border: 2px solid var(--grape); }
 @media (max-width: 640px) { .review .word { grid-template-columns: 1fr; } }
@@ -163,3 +164,38 @@ body { min-height: 100dvh; background: radial-gradient(circle at 85% 0%, var(--g
 .guion .cue.click { align-self: flex-start; color: var(--night); background: var(--pink); padding: 3px 10px; border-radius: 999px; }
 .guion .beat.next .cue.click { background: var(--lime); box-shadow: 0 0 0 3px rgba(198,244,50,.35); }
 .guion .cue.time { color: var(--lime); }
+
+/* ---------- Pantallas chicas y horizontales ---------- */
+.table-wrap { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cols > * { min-width: 0; }
+.now-slide select, .now-slide .row > * { min-width: 0; max-width: 100%; }
+.btn { max-width: 100%; }
+@media (max-width: 560px) {
+  .table { font-size: 13px; }
+  .table th, .table td { padding: 6px 4px; }
+  .table th { font-size: 11px; letter-spacing: .5px; }
+  .table .who { gap: 6px; }
+  .table .who .av { width: 28px; height: 28px; }
+  .table .pill { display: none; }
+  .table .btn.small { padding: 6px 10px; font-size: 13px; }
+}
+@media (max-width: 380px) {
+  .phone { padding: 14px 12px 120px; gap: 14px; }
+  .sheet-head { margin: -14px -12px 0; padding: 10px 12px; }
+  .timer { font-size: 32px; min-width: 96px; padding: 6px 10px; }
+  .grid20 { gap: 4px; }
+  .grid20 i { font-size: 12px; border-radius: 8px; }
+  .versus .n { font-size: 40px; }
+  .reactbar { gap: 4px; padding-left: 6px; padding-right: 6px; }
+  .reactbar button { font-size: 9px; }
+  .reactbar button span { font-size: 22px; }
+}
+/* Celular acostado: la barra de reacciones y la hoja ocupan menos alto */
+@media (max-height: 500px) and (orientation: landscape) {
+  .sheet-head { position: static; }
+  .sheet-foot { padding-top: 6px; padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+  .sheet-foot .btn { min-height: 46px; font-size: 18px; }
+  .reactbar { padding-top: 4px; padding-bottom: calc(4px + env(safe-area-inset-bottom)); }
+  .reactbar button { flex-direction: row; padding: 4px 6px; }
+  .reactbar button span { font-size: 20px; }
+}

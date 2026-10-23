@@ -265,7 +265,7 @@ function renderPlayers() {
   tabEl.innerHTML = `
     <div class="card">
       <p class="lead" style="margin-bottom:10px"><b>${rows.length}</b> en el juego. Si alguien pone un nombre inapropiado, sácalo con el botón (desaparece de la pantalla y de la tabla).</p>
-      <table class="table">
+      <div class="table-wrap"><table class="table">
         <thead><tr><th>Jugador</th><th>Conexión</th><th>Ronda 1</th><th>Ronda 2</th><th></th></tr></thead>
         <tbody>
           ${all.map(([id, p]) => {
@@ -279,7 +279,7 @@ function renderPlayers() {
             </tr>`;
           }).join('') || '<tr><td colspan="5" class="muted">Todavía no entra nadie.</td></tr>'}
         </tbody>
-      </table>
+      </table></div>
     </div>`;
   tabEl.querySelectorAll('[data-kick]').forEach((b) => {
     b.onclick = () => {
@@ -347,7 +347,7 @@ function renderTable() {
         <p class="lead">Promedio ronda 1: <b>${s1.count ? s1.avg.toFixed(1) : '—'}</b> · ronda 2: <b>${s2.count ? s2.avg.toFixed(1) : '—'}</b></p>
         <button class="btn small pink" id="toPodium">Mostrar el podio en pantalla</button>
       </div>
-      <table class="table">
+      <div class="table-wrap"><table class="table">
         <thead><tr><th>#</th><th>Jugador</th><th style="text-align:right">R1</th><th style="text-align:right">R2</th><th style="text-align:right">Total</th><th style="text-align:right">Mejora</th></tr></thead>
         <tbody>
           ${rows.map((r) => `<tr>
@@ -359,7 +359,7 @@ function renderTable() {
             <td class="num">${r.gain === null ? '—' : (r.gain > 0 ? '+' : '') + r.gain}</td>
           </tr>`).join('') || '<tr><td colspan="6" class="muted">Sin jugadores todavía.</td></tr>'}
         </tbody>
-      </table>
+      </table></div>
     </div>`;
   $('toPodium').onclick = () => room.sendCmd('goto', 'podio');
 }

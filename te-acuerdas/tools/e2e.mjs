@@ -135,6 +135,19 @@ await shot(alex, '08-alex-questions');
 await shot(joss, '09-gancho');
 await shot(phones[1], '10-phone-text');
 
+// Regresar no cierra la actividad; y si se pasó de largo, al volver se reabre
+const canWrite = async (p) => (await p.isVisible('#qin')) && (await p.isEnabled('#qin'));
+await joss.keyboard.press('ArrowLeft');
+await wait(1300);
+check((await slideId()) === 'ronda-1', 'regresó a la portada');
+await press(1300);
+check((await slideId()) === 'gancho' && (await canWrite(phones[2])), 'al regresar y volver a avanzar, la pregunta sigue abierta');
+await press(1300); // avanza a «memoria»: se cierra
+check(!(await canWrite(phones[2])), 'al avanzar más allá, la pregunta se cierra');
+await joss.keyboard.press('ArrowLeft');
+await wait(1300);
+check((await slideId()) === 'gancho' && (await canWrite(phones[2])), 'al volver a la pregunta, se reabre');
+
 // Sí / No
 await goTo('memoria');
 await goTo('miller');

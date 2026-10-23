@@ -317,7 +317,7 @@ function onSlide(e) {
   cancelChunk();
   if (!/^p\d\d$/.test(slide.id)) cancelWordClock();
   if (prev === 'reto' && slide.id === 'p01') wordsPaused = false; // el primer clic en reto arranca el avance solo
-  syncQuestions(prev, slide.id);
+  syncQuestions(prev, slide.id, index);
   const stage = stageFor(slide.id, index, RETO_INDEX);
   const word = /^p\d\d$/.test(slide.id) ? parseInt(slide.id.slice(1), 10) : 0;
   const title = titleOf(slide).slice(0, 90);
@@ -330,14 +330,24 @@ function onSlide(e) {
 }
 
 // ---------- Preguntas en vivo: se abren al entrar y se cierran al salir o con su clic ----------
-function syncQuestions(prevId, nowId) {
-  const prevQ = prevId && QUESTION_BY_SLIDE[prevId];
+// Última diapositiva donde sigue viva cada pregunta (la suya, la de resultados o la del muro).
+const Q_LAST = Object.fromEntries(Object.entries(QUESTIONS).map(([qid, q]) =>
+  [qid, Math.max(...[q.slide, q.resultSlide, q.closeAfter].filter(Boolean).map((id) => SLIDES.findIndex((s) => s.id === id)))]));
+
+// Se cierra sola al avanzar más allá de la pregunta; si se regresa, no se cierra nada.
+// Si una pregunta se cerró solo por avanzar (sin revelar la respuesta) y se vuelve a ella, se reabre.
+const reopenable = (st) => !st?.open && (!st?.closedAt || (st.left && !st.revealed));
+
+function syncQuestions(prevId, nowId, index) {
+  const qs = roomData.q || {};
+  const prevIndex = prevId ? SLIDES.findIndex((s) => s.id === prevId) : -1;
+  if (index > prevIndex) {
+    for (const [qid, st] of Object.entries(qs)) if (st?.open && Q_LAST[qid] < index) room.closeQuestion(qid, { left: true });
+  }
   const nowQ = QUESTION_BY_SLIDE[nowId];
-  if (prevQ && prevQ !== nowQ && data.qstate[prevQ]?.open) room.closeQuestion(prevQ);
   if (nowQ) {
     const q = QUESTIONS[nowQ];
-    const st = data.qstate[nowQ];
-    if (nowId === q.slide && q.open !== 'manual' && !st?.closedAt && !st?.open) {
+    if (nowId === q.slide && q.open !== 'manual' && reopenable(qs[nowQ])) {
       room.openQuestion(nowQ);
       sfx.chime();
     }
@@ -405,7 +415,7 @@ function finishChunk() {
   if (cd) cd.style.visibility = 'hidden';
   if (deck.current?.id === 'chunk' && deck.pendingSteps > 0) deck.next(); // oculta el número y muestra el resto
   sfx.poof();
-  if (!data.qstate.chunk?.closedAt) {
+  if (reopenable((roomData.q || {}).chunk)) {
     room.openQuestion('chunk');
     setTimeout(sfx.chime, 450);
   }

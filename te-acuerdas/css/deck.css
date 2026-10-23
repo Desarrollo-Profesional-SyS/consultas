@@ -45,6 +45,12 @@ html, body { height: 100%; overflow: hidden; background: var(--ink); }
 #hud button:hover { background: var(--grape); }
 #hud .count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
 #hud .net { display: flex; align-items: center; gap: 6px; padding-right: 6px; }
+@media (max-width: 520px) {
+  #hud { right: 8px; left: 8px; bottom: 8px; justify-content: space-between; gap: 4px; padding: 4px 6px 4px 10px; }
+  #hud button { width: 34px; height: 34px; }
+  #hud #netTxt { display: none; }
+  #hud .count { min-width: 48px; font-size: 13px; }
+}
 
 #hint {
   position: fixed; left: 50%; top: 16px; transform: translateX(-50%);

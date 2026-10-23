@@ -332,8 +332,8 @@ function questionScreen(qid) {
 
   if (q.type === 'scale') {
     view.innerHTML = `${head}
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;width:100%">
-        ${Array.from({ length: q.max - q.min + 1 }, (_, i) => q.min + i).map((n) => `<button class="btn ${+mine?.v === n ? '' : 'dark'}" data-v="${n}" style="min-height:64px;font-family:var(--display);font-size:30px;padding:0">${n}</button>`).join('')}
+      <div style="display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:clamp(6px,2.5vw,10px);width:100%">
+        ${Array.from({ length: q.max - q.min + 1 }, (_, i) => q.min + i).map((n) => `<button class="btn ${+mine?.v === n ? '' : 'dark'}" data-v="${n}" style="min-height:clamp(52px,15vw,64px);font-family:var(--display);font-size:clamp(22px,7vw,30px);padding:0;min-width:0">${n}</button>`).join('')}
       </div>
       <p class="lead">${mine ? `Tu calificación: <b>${mine.v}</b>. Puedes cambiarla mientras esté abierta.` : '1 = la de un pez · 10 = la de un elefante'}</p>`;
     view.querySelectorAll('[data-v]').forEach((b) => (b.onclick = () => send(qid, +b.dataset.v)));
@@ -343,10 +343,10 @@ function questionScreen(qid) {
   if (q.type === 'choice') {
     const big = q.options.length === 2;
     view.innerHTML = `${head}
-      <div style="display:grid;grid-template-columns:${big ? '1fr 1fr' : '1fr'};gap:12px;width:100%">
+      <div style="display:grid;grid-template-columns:${big ? 'repeat(auto-fit,minmax(150px,1fr))' : 'minmax(0,1fr)'};gap:12px;width:100%">
         ${q.options.map((o) => {
           const on = mine?.v === o.id;
-          return `<button class="btn" data-v="${o.id}" style="background:${CHOICE_COLORS[o.id]};min-height:${big ? 120 : 76}px;font-size:${big ? 26 : 20}px;justify-content:${big ? 'center' : 'flex-start'};text-align:left;${on ? 'outline:5px solid var(--cream);outline-offset:3px' : mine ? 'filter:saturate(.5) brightness(.8)' : ''}">
+          return `<button class="btn" data-v="${o.id}" style="background:${CHOICE_COLORS[o.id]};min-height:${big ? 'clamp(84px,26vw,120px)' : '76px'};font-size:${big ? 'clamp(19px,5.4vw,26px)' : 'clamp(16px,4.8vw,20px)'};min-width:0;${big ? 'padding:0 10px;' : ''}justify-content:${big ? 'center' : 'flex-start'};text-align:left;${on ? 'outline:5px solid var(--cream);outline-offset:3px' : mine ? 'filter:saturate(.5) brightness(.8)' : ''}">
             ${big ? escapeHtml(o.label) : `<span style="font-family:var(--display);font-size:30px;width:36px">${o.id}</span>${escapeHtml(o.label)}`}${on ? ' ✓' : ''}</button>`;
         }).join('')}
       </div>

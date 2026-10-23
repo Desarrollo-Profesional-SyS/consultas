@@ -24,6 +24,7 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
+html { background: var(--night); }
 body { background: var(--night); color: var(--cream); font-family: var(--body); -webkit-font-smoothing: antialiased; }
 button { font: inherit; cursor: pointer; }
 .ico { display: inline-block; vertical-align: middle; flex: none; }
