@@ -12,6 +12,100 @@ const MIN_FOR_CHART = 3;
 const memo = new WeakMap(); // estado por elemento (para no repetir animaciones)
 
 const $$ = (root, sel) => [...root.querySelectorAll(sel)];
+
+// ---------- Que todo quepa ----------
+// Pinta todos los elementos en host. Si no caben, los achica (hasta minZoom); si aun así no
+// caben, los reparte en páginas que rotan solas (carrusel) con puntitos de página abajo.
+// El tamaño de host lo pone la diapositiva (o grow: ocupa lo que sobre en su tarjeta).
+const fits = new WeakMap();
+
+function fitAll(host, items, { minZoom = 0.7, pageZoom = 0.8, every = 6500, entering = false, grow = false, bottom = false, onPage = null } = {}) {
+  let f = fits.get(host);
+  if (!f) {
+    const cs = getComputedStyle(host);
+    const grid = cs.display === 'grid';
+    const wrap = document.createElement('div');
+    wrap.style.cssText = [
+      `display:${grid ? 'grid' : 'flex'}`,
+      grid ? `grid-template-columns:${host.dataset.cols || cs.gridTemplateColumns}` : `flex-direction:${cs.flexDirection};flex-wrap:${cs.flexWrap}`,
+      `row-gap:${cs.rowGap === 'normal' ? '0px' : cs.rowGap}`,
+      `column-gap:${cs.columnGap === 'normal' ? '0px' : cs.columnGap}`,
+      `align-items:${cs.alignItems === 'normal' ? 'stretch' : cs.alignItems}`,
+      `justify-content:${cs.justifyContent}`,
+      'align-content:flex-start',
+      `transform-origin:${bottom ? '0 100%' : '0 0'}`,
+      // Fuera del flujo: lo que haya adentro nunca cambia el tamaño de su caja.
+      `position:absolute;left:0px;${bottom ? 'bottom' : 'top'}:0px`,
+    ].join(';');
+    const dots = document.createElement('div');
+    dots.style.cssText = 'display:none;position:absolute;left:0px;right:0px;bottom:0px;height:34px;flex-direction:row;align-items:center;justify-content:center;gap:8px';
+    host.innerHTML = '';
+    host.append(wrap, dots);
+    host.style.display = 'block';
+    host.style.overflow = 'hidden';
+    host.style.minWidth = '0';
+    if (cs.position === 'static') host.style.position = 'relative';
+    if (grow) { host.style.flex = '1 1 0'; host.style.minHeight = '0'; }
+    f = { wrap, dots, timer: null, page: 0 };
+    fits.set(host, f);
+  }
+  const { wrap, dots } = f;
+  clearInterval(f.timer);
+  f.timer = null;
+  const before = new Set([...wrap.querySelectorAll('[data-id]')].map((c) => c.dataset.id));
+  const W = Math.max(0, host.clientWidth - 12); // margen para las sombras de las tarjetas
+  const H = Math.max(0, host.clientHeight - 10);
+  const zoom = (z) => { wrap.style.transform = z === 1 ? '' : `scale(${z})`; wrap.style.width = `${W / z}px`; wrap.style.flexShrink = '0'; };
+  wrap.innerHTML = items.join('');
+  dots.style.display = 'none';
+  let z = 1;
+  zoom(1);
+  while (W && H && wrap.offsetHeight * z > H + 1 && z > minZoom + 0.001) {
+    z = Math.max(minZoom, Math.round((z - 0.05) * 100) / 100);
+    zoom(z);
+  }
+  if (!W || !H || wrap.offsetHeight * z <= H + 1) {
+    host.dataset.pages = '';
+    if (!entering) {
+      for (const c of wrap.querySelectorAll('[data-id]')) {
+        if (!before.has(c.dataset.id)) c.animate([{ opacity: 0, scale: '0.6' }, { opacity: 1, scale: '1' }], { duration: 420, easing: 'cubic-bezier(.2,1.4,.4,1)' });
+      }
+    }
+    onPage?.(0, 1);
+    return { paged: false, wrap };
+  }
+  // Carrusel: se llena cada página hasta donde quepa.
+  const limit = H - 40;
+  zoom(pageZoom);
+  const pages = [];
+  let cur = [];
+  wrap.innerHTML = '';
+  for (const it of items) {
+    wrap.insertAdjacentHTML('beforeend', it);
+    if (cur.length && wrap.offsetHeight * pageZoom > limit) {
+      pages.push(cur);
+      cur = [it];
+      wrap.innerHTML = it;
+    } else cur.push(it);
+  }
+  if (cur.length) pages.push(cur);
+  const show = (i, anim) => {
+    f.page = i;
+    wrap.innerHTML = pages[i].join('');
+    if (anim) wrap.animate([{ opacity: 0, translate: '60px 0' }, { opacity: 1, translate: '0 0' }], { duration: 480, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    dots.innerHTML = pages.map((_, k) => `<i style="display:block;width:${k === i ? 34 : 14}px;height:14px;border-radius:999px;background:${k === i ? '#FF3E8E' : '#160A26'};border:2px solid #FFF4E0"></i>`).join('') +
+      `<b style="font-family:Rubik, Arial, sans-serif;font-size:18px;font-weight:800;color:#160A26;background:#FFF4E0;border:2px solid #07030D;border-radius:999px;padding:1px 10px;margin-left:6px">${i + 1} / ${pages.length}</b>`;
+    host.dataset.pages = `${i + 1} / ${pages.length}`;
+    onPage?.(i, pages.length);
+  };
+  dots.style.display = 'flex';
+  show(Math.min(f.page, pages.length - 1), false);
+  f.timer = setInterval(() => {
+    if (!host.isConnected) { clearInterval(f.timer); return; }
+    show((f.page + 1) % pages.length, true);
+  }, every);
+  return { paged: true, wrap };
+}
 const one = (n) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
 
 // data = { code, url, rows, players, stats: {1,2}, rounds, order2, best, answers, qs: { pregunta: resumen } }
@@ -124,7 +218,6 @@ function submittedText(r, data) {
 function chip(row, size, withName) {
   const d = document.createElement('div');
   d.className = withName ? 'lobby-chip' : 'range-chip';
-  if (!withName) d.style.cssText = 'display:flex;flex-direction:row;align-self:flex-start'; // gana a la regla general de columnas del escenario
   d.dataset.id = row.id;
   d.title = row.name;
   d.innerHTML = avatarSVG(row.avatar, { size, title: row.name }) + `<span>${escapeHtml(row.name)}</span>`;
@@ -151,20 +244,24 @@ function lobbyAvatars(host, rows, entering) {
     }
   });
   memo.set(host, ids);
+  // Si ya no caben, los avatares se hacen más chicos (los nombres siempre completos).
+  host.classList.remove('tight', 'tighter');
+  if (host.scrollHeight > host.clientHeight + 2) host.classList.add('tight');
+  if (host.scrollHeight > host.clientHeight + 2) host.classList.add('tighter');
 }
 
 function rangeAvatars(host, rows, entering) {
-  const ids = new Set(rows.map((r) => r.id));
-  for (const c of [...host.children]) if (!ids.has(c.dataset.id)) c.remove();
-  rows.forEach((row, i) => {
-    if (host.querySelector(`[data-id="${CSS.escape(row.id)}"]`)) return;
-    const c = chip(row, 30, false);
-    host.appendChild(c);
-    c.animate([{ opacity: 0, translate: '0 -60px' }, { opacity: 1, translate: '0 0' }], {
-      duration: 500, delay: entering ? 300 + i * 70 : 0, easing: 'cubic-bezier(.2,1.4,.4,1)', fill: 'backwards',
+  const key = rows.map((r) => `${r.id}:${r.name}:${r.avatar}`).join('|');
+  if (memo.get(host) === key) return;
+  memo.set(host, key);
+  const items = rows.map((r) => `<div data-id="${escapeHtml(r.id)}" style="display:flex;flex-direction:row;align-items:center;gap:6px;background:rgba(255,244,224,.14);border-radius:999px;padding:2px 14px 2px 2px">${avatarSVG(r.avatar, { size: 34, title: r.name })}<p style="font-size:20px;font-weight:800;line-height:1.2;white-space:nowrap">${escapeHtml(r.name)}</p></div>`);
+  const { paged, wrap } = fitAll(host, items, { grow: true, minZoom: 0.62, pageZoom: 0.72, entering });
+  if (entering && !paged) {
+    [...wrap.children].forEach((c, i) => {
+      c.animate([{ opacity: 0, translate: '0 -60px' }, { opacity: 1, translate: '0 0' }], { duration: 500, delay: 300 + i * 70, easing: 'cubic-bezier(.2,1.4,.4,1)', fill: 'backwards' });
+      setTimeout(sfx.bloop, 900 + i * 70);
     });
-    if (entering) setTimeout(sfx.bloop, 900 + i * 70);
-  });
+  }
 }
 
 function serialChart(host, s) {
@@ -213,38 +310,42 @@ function podium(host, rows) {
   const block = +host.dataset.block;
   const winners = rows.filter((r) => r.place === place);
   const row = winners[0];
-  const key = row ? `${winners.map((w) => w.id).join(',')}|${row.total}` : 'none';
+  const key = row ? `${winners.map((w) => `${w.id}:${w.name}:${w.avatar}`).join(',')}|${row.total}` : 'none';
   if (memo.get(host) === key) return;
   memo.set(host, key);
-  const names = winners.map((w) => escapeHtml(w.name)).join(' y ');
-  const avatars = winners.slice(0, 2).map((w) => avatarSVG(w.avatar, { size: winners.length > 1 ? 120 : 170, title: w.name })).join('');
   host.style.display = 'flex';
   host.style.flexDirection = 'column';
   host.style.alignItems = 'center';
   host.style.justifyContent = 'flex-end';
   host.style.gap = '10px';
+  // Mismo puntaje, mismo lugar: todos los empatados suben juntos al escalón.
+  const one1 = winners.length === 1;
+  const size = one1 ? 170 : winners.length === 2 ? 120 : winners.length <= 4 ? 96 : 76;
   host.innerHTML = `
-    ${row ? `<div style="display:flex;flex-direction:row;gap:4px;align-items:flex-end">${avatars}</div>
-    <p style="font-size:${winners.length > 1 ? 26 : 34}px;font-weight:800;color:#FFF4E0;text-align:center;line-height:1.15;width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${names}</p>
-    <p style="font-size:28px;font-weight:800;color:#D9C9F2;line-height:1">${row.total} pts · ${row.r1} + ${row.r2}</p>`
-    : `<p style="font-size:30px;font-weight:800;color:#6b5a85">—</p>`}
+    <div data-role="who" style="flex:1 1 0;min-height:0;width:340px;display:flex;flex-direction:row;flex-wrap:wrap;justify-content:center;align-content:flex-end;align-items:flex-end;gap:10px 12px"></div>
+    ${row ? `<p style="font-size:28px;font-weight:800;color:#D9C9F2;line-height:1">${row.total} pts${one1 ? ` · ${row.r1} + ${row.r2}` : ` · ${winners.length} empatados`}</p>` : `<p style="font-size:30px;font-weight:800;color:#6b5a85">—</p>`}
     <div style="width:300px;height:${block}px;display:flex;align-items:flex-start;justify-content:center;padding-top:18px;background:${PODIUM_COLORS[place]};border:5px solid #07030D;border-radius:18px 18px 0 0;box-shadow:12px 12px 0 #07030D">
       <p style="font-family:'Bowlby One',sans-serif;font-size:${place === 1 ? 120 : 96}px;line-height:1;color:#160A26">${place}</p>
     </div>`;
+  if (!row) return;
+  const who = host.querySelector('[data-role="who"]');
+  const items = winners.map((w) => `<div data-id="${escapeHtml(w.id)}" style="display:flex;flex-direction:column;align-items:center;gap:4px;max-width:${one1 ? 340 : 170}px">${avatarSVG(w.avatar, { size, title: w.name })}<p style="font-size:${one1 ? 34 : 24}px;font-weight:800;color:#FFF4E0;text-align:center;line-height:1.1">${escapeHtml(w.name)}</p></div>`);
+  fitAll(who, items, { minZoom: 0.5, pageZoom: 0.6, entering: true, bottom: true });
 }
 
 function boardRest(host, rows) {
-  const rest = rows.filter((r) => r.place >= 4).slice(0, 7);
-  const key = rest.map((r) => `${r.id}:${r.place}:${r.total}`).join('|');
+  const rest = rows.filter((r) => r.place >= 4);
+  const key = rest.map((r) => `${r.id}:${r.place}:${r.total}:${r.name}`).join('|');
   if (memo.get(host) === key) return;
   memo.set(host, key);
-  host.innerHTML = rest.map((r) => `
-    <div style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#2A1745;border:3px solid #3B1766;border-radius:16px;padding:8px 18px">
-      <p style="font-family:'Bowlby One',sans-serif;font-size:32px;color:#FF3E8E;width:48px;line-height:1">${r.place}</p>
+  const items = rest.map((r) => `
+    <div data-id="${escapeHtml(r.id)}" style="display:flex;flex-direction:row;align-items:center;gap:16px;background:#2A1745;border:3px solid #3B1766;border-radius:16px;padding:8px 18px">
+      <p style="font-family:'Bowlby One',sans-serif;font-size:32px;color:#FF3E8E;width:56px;line-height:1">${r.place}</p>
       ${avatarSVG(r.avatar, { size: 52, title: r.name })}
-      <p style="flex:1;font-size:28px;font-weight:800;color:#FFF4E0;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(r.name)}</p>
+      <p style="flex:1;font-size:28px;font-weight:800;color:#FFF4E0;line-height:1.2">${escapeHtml(r.name)}</p>
       <p style="font-size:28px;font-weight:800;color:#C6F432;line-height:1">${r.total}</p>
-    </div>`).join('') || '';
+    </div>`);
+  fitAll(host, items, { minZoom: 0.6, pageZoom: 0.66, entering: true });
 }
 
 // Cuenta de 0 al valor final (para el "antes y después").
@@ -286,7 +387,7 @@ function renderQuestions(el, data, entering) {
   for (const n of $$(el, '[data-live="poll-option"]')) {
     const sm = sum(n);
     const v = sm?.byOption?.[n.dataset.option]?.length || 0;
-    const html = `${pct(v, sm?.count)}%<br><span style="font-size:22px">${v} ${v === 1 ? 'voto' : 'votos'}</span>`;
+    const html = `${pct(v, sm?.count)}%<br><span style="font-size:20px">${v} ${v === 1 ? 'voto' : 'votos'}</span>`;
     if (n.innerHTML !== html) n.innerHTML = html;
   }
   for (const n of $$(el, '[data-live="poll-names"]')) pollNames(n, sum(n)?.byOption?.[n.dataset.option] || []);
@@ -295,15 +396,15 @@ function renderQuestions(el, data, entering) {
 
   for (const n of $$(el, '[data-live="answers"]')) textAnswers(n, sum(n), entering);
   for (const n of $$(el, '[data-live="answers-count"]')) {
-    const sm = sum(n);
-    const c = sm?.visible?.length || 0;
-    n.textContent = c > 12 ? `${c} respuestas · se ven las 12 más recientes` : c ? `${c} ${c === 1 ? 'respuesta' : 'respuestas'}` : 'Las respuestas aparecen aquí en cuanto las escriban.';
+    const host = el.querySelector(`[data-live="answers"][data-q="${n.dataset.q}"]`);
+    const [p, total] = (host?.dataset.pages || '1 / 1').split(' / ').map(Number);
+    n.textContent = answersLabel(sum(n)?.visible?.length || 0, p - 1, total);
   }
 
   const ch = qs.chunk;
   for (const n of $$(el, '[data-live="chunk-ok-count"]')) n.textContent = String(ch?.ok?.length || 0);
   for (const n of $$(el, '[data-live="chunk-no-count"]')) n.textContent = String(Math.max(0, data.rows.length - (ch?.ok?.length || 0)));
-  for (const n of $$(el, '[data-live="chunk-ok"]')) voteNames(n, ch?.ok || [], entering, 14);
+  for (const n of $$(el, '[data-live="chunk-ok"]')) voteNames(n, ch?.ok || [], entering);
   for (const n of $$(el, '[data-live="chunk-avg"]')) {
     const a = ch?.avgHits;
     const r = a == null ? null : Math.round(a);
@@ -338,57 +439,55 @@ function pollRows(host, sm) {
 }
 
 function pollNames(host, list) {
-  const max = 5;
-  const key = list.map((a) => a.id).join(',');
+  const key = list.map((a) => `${a.id}:${a.name}`).join(',');
   if (memo.get(host) === key) return;
   memo.set(host, key);
-  host.innerHTML = list.slice(0, max).map((a) => `<div style="display:flex;flex-direction:row;align-items:center;gap:4px;background:#FFF4E0;padding:1px 10px 1px 1px;border:2px solid #07030D;border-radius:999px">${avatarSVG(a.avatar, { size: 28, title: a.name })}<p style="font-size:18px;font-weight:800;color:#160A26;white-space:nowrap">${escapeHtml(a.name)}</p></div>`).join('') +
-    (list.length > max ? `<p style="font-size:18px;font-weight:800;color:#FFF4E0;padding:4px 6px">+${list.length - max}</p>` : '');
+  const items = list.map((a) => `<div data-id="${escapeHtml(a.id)}" style="display:flex;flex-direction:row;align-items:center;gap:4px;background:#FFF4E0;padding:1px 12px 1px 1px;border:2px solid #07030D;border-radius:999px">${avatarSVG(a.avatar, { size: 30, title: a.name })}<p style="font-size:20px;font-weight:800;color:#160A26;white-space:nowrap">${escapeHtml(a.name)}</p></div>`);
+  fitAll(host, items, { minZoom: 0.66, pageZoom: 0.72 });
 }
 
 function nameChip(a, size = 40, font = 24) {
   return `<div data-id="${escapeHtml(a.id)}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:row;align-items:center;gap:8px;background:#3B1766;padding:4px 18px 4px 4px;border:3px solid #07030D;border-radius:999px">${avatarSVG(a.avatar, { size, title: a.name })}<p style="font-size:${font}px;font-weight:800;color:#FFF4E0;white-space:nowrap">${escapeHtml(a.name)}</p></div>`;
 }
 
-function voteNames(host, list, entering, max = 8) {
-  const shown = list.slice(0, max);
-  const key = shown.map((a) => a.id).join(',') + '|' + list.length;
+function voteNames(host, list, entering) {
+  const key = list.map((a) => `${a.id}:${a.name}`).join(',');
   if (memo.get(host) === key) return;
-  const before = new Set([...host.querySelectorAll('[data-id]')].map((c) => c.dataset.id));
   memo.set(host, key);
-  host.innerHTML = shown.map((a) => nameChip(a)).join('') +
-    (list.length > max ? `<p style="font-size:24px;font-weight:800;padding:10px 18px;color:#160A26;background:#FFF4E0;border:3px solid #07030D;border-radius:999px">+${list.length - max} más</p>` : '');
-  host.querySelectorAll('[data-id]').forEach((c) => {
-    if (!before.has(c.dataset.id) && !entering) c.animate([{ opacity: 0, scale: '0.4' }, { opacity: 1, scale: '1' }], { duration: 380, easing: 'cubic-bezier(.2,1.4,.4,1)' });
-  });
+  fitAll(host, list.map((a) => nameChip(a)), { grow: true, minZoom: 0.62, pageZoom: 0.7, entering });
 }
 
 function textAnswers(host, sm, entering) {
   const cards = host.dataset.style === 'cards';
-  const max = +(host.dataset.max || (cards ? 12 : host.dataset.q === 'revela' ? 4 : 6));
-  const list = (sm?.visible || []).slice(0, max);
-  const key = list.map((a) => `${a.id}:${a.t}`).join(',');
+  const list = sm?.visible || [];
+  const key = list.map((a) => `${a.key}:${a.name}:${a.v}:${a.area || ''}`).join(',');
   if (memo.get(host) === key) return;
-  const before = new Set([...host.querySelectorAll('[data-id]')].map((c) => c.dataset.id + ':' + c.dataset.t));
   memo.set(host, key);
-  host.innerHTML = list.map((a, i) => {
+  const items = list.map((a, i) => {
     const accent = ACCENTS[i % ACCENTS.length];
     const rot = i % 2 ? 1 : -1;
     if (cards) {
-      return `<div data-id="${escapeHtml(a.id)}" data-t="${a.t}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:column;gap:12px;background:#FFF4E0;padding:18px 20px;border:4px solid #07030D;border-radius:22px;box-shadow:8px 8px 0px ${accent};transform:rotate(${rot * 0.8}deg)">
-        <div style="display:flex;flex-direction:row;align-items:center;gap:8px">${avatarSVG(a.avatar, { size: 40, title: a.name })}<p style="font-size:22px;font-weight:800;color:#160A26;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(a.name)}</p></div>
-        <p style="font-size:24px;font-weight:800;line-height:1.25;color:#160A26;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(a.v)}</p>
+      return `<div data-id="${escapeHtml(a.key)}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:column;gap:12px;background:#FFF4E0;padding:18px 20px;border:4px solid #07030D;border-radius:22px;box-shadow:8px 8px 0px ${accent};transform:rotate(${rot * 0.8}deg)">
+        <div style="display:flex;flex-direction:row;align-items:center;gap:8px">${avatarSVG(a.avatar, { size: 40, title: a.name })}<p style="font-size:22px;font-weight:800;color:#160A26">${escapeHtml(a.name)}</p></div>
+        <p style="font-size:24px;font-weight:800;line-height:1.25;color:#160A26;overflow-wrap:anywhere">${escapeHtml(a.v)}</p>
         ${a.area ? `<p style="align-self:flex-start;font-size:18px;font-weight:800;color:#160A26;background:${accent};padding:4px 12px;border:2px solid #07030D;border-radius:999px">${escapeHtml(a.area)}</p>` : ''}
       </div>`;
     }
-    return `<div data-id="${escapeHtml(a.id)}" data-t="${a.t}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:column;gap:10px;width:350px;background:#FFF4E0;padding:16px 20px;border:4px solid #07030D;border-radius:24px 24px 24px 6px;box-shadow:8px 8px 0px ${accent};transform:rotate(${rot}deg)">
-      <div style="display:flex;flex-direction:row;align-items:center;gap:8px">${avatarSVG(a.avatar, { size: 44, title: a.name })}<p style="font-size:24px;font-weight:800;color:#160A26;background:${accent};padding:2px 12px;border:3px solid #07030D;border-radius:999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:250px">${escapeHtml(a.name)}</p></div>
-      <p style="font-size:26px;font-weight:800;line-height:1.2;color:#160A26;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escapeHtml(a.v)}</p>
+    return `<div data-id="${escapeHtml(a.key)}" style="font-family:Rubik, Arial, sans-serif;display:flex;flex-direction:column;gap:10px;width:340px;background:#FFF4E0;padding:16px 20px;border:4px solid #07030D;border-radius:24px 24px 24px 6px;box-shadow:8px 8px 0px ${accent};transform:rotate(${rot}deg)">
+      <div style="display:flex;flex-direction:row;align-items:center;gap:8px">${avatarSVG(a.avatar, { size: 44, title: a.name })}<p style="font-size:24px;font-weight:800;color:#160A26;background:${accent};padding:2px 12px;border:3px solid #07030D;border-radius:999px">${escapeHtml(a.name)}</p></div>
+      <p style="font-size:26px;font-weight:800;line-height:1.2;color:#160A26;overflow-wrap:anywhere">${escapeHtml(a.v)}</p>
     </div>`;
-  }).join('');
-  host.querySelectorAll('[data-id]').forEach((c) => {
-    if (!entering && !before.has(c.dataset.id + ':' + c.dataset.t)) c.animate([{ opacity: 0, translate: '0 30px', scale: '0.8' }, { opacity: 1, translate: '0 0', scale: '1' }], { duration: 420, easing: 'cubic-bezier(.2,1.3,.4,1)' });
   });
+  const count = host.closest('section')?.querySelector(`[data-live="answers-count"][data-q="${host.dataset.q}"]`);
+  fitAll(host, items, {
+    minZoom: cards ? 0.62 : 0.66, pageZoom: cards ? 0.7 : 0.72, every: 7000, entering,
+    onPage: (p, n) => { if (count) count.textContent = answersLabel(list.length, p, n); },
+  });
+}
+
+function answersLabel(c, p = 0, n = 1) {
+  if (!c) return 'Las respuestas aparecen aquí en cuanto las escriban.';
+  return `${c} ${c === 1 ? 'comentario' : 'comentarios'}${n > 1 ? ` · rotan solas: página ${p + 1} de ${n}` : ''}`;
 }
 
 // ---------- Resumen final: todo el grupo con su avatar y cómo le fue ----------
@@ -416,20 +515,21 @@ function summaryStats(host, data) {
 
 function summaryGrid(host, data) {
   const ex = data.extras || {};
-  const rows = data.rows.slice(0, 30);
+  const rows = data.rows;
   const key = rows.map((r) => `${r.id}:${r.r1}:${r.r2}:${ex[r.id]?.rate}:${r.avatar}:${r.name}`).join('|');
   if (memo.get(host) === key) return;
   memo.set(host, key);
-  host.innerHTML = rows.map((r, i) => {
+  const items = rows.map((r, i) => {
     const e = ex[r.id] || {};
     const accent = ACCENTS[i % ACCENTS.length];
-    return `<div style="display:flex;flex-direction:row;align-items:center;gap:10px;background:#2A1745;padding:10px 12px;border:3px solid ${accent};border-radius:18px;box-shadow:5px 5px 0 #07030D;min-width:0">
+    return `<div data-id="${escapeHtml(r.id)}" style="display:flex;flex-direction:row;align-items:center;gap:10px;background:#2A1745;padding:10px 12px;border:3px solid ${accent};border-radius:18px;box-shadow:5px 5px 0 #07030D;min-width:0">
       ${avatarSVG(r.avatar, { size: 66, title: r.name })}
       <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-        <p style="font-size:22px;font-weight:800;color:#FFF4E0;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHtml(r.name)}</p>
+        <p style="font-size:22px;font-weight:800;color:#FFF4E0;line-height:1.15;overflow-wrap:anywhere">${escapeHtml(r.name)}</p>
         <p style="font-size:19px;font-weight:800;color:${accent};line-height:1.2;white-space:nowrap">${r.played1 ? r.r1 : '—'} → ${r.played2 ? r.r2 : '—'} palabras</p>
-        <p style="font-size:17px;font-weight:600;color:#D9C9F2;line-height:1.2;white-space:nowrap">${e.rate != null ? `Memoria ${e.rate}/10` : ''}${e.rate != null && e.n ? ' · ' : ''}${e.n ? `${e.ok}/${e.n} ✓` : ''}</p>
+        <p style="font-size:17px;font-weight:600;color:#D9C9F2;line-height:1.2">${e.rate != null ? `Memoria ${e.rate}/10` : ''}${e.rate != null && e.n ? ' · ' : ''}${e.n ? `${e.ok}/${e.n} ✓` : ''}</p>
       </div>
     </div>`;
-  }).join('') + (data.rows.length > 30 ? `<p style="font-size:24px;font-weight:800;color:#D9C9F2;align-self:center">+${data.rows.length - 30} más</p>` : '');
+  });
+  fitAll(host, items, { minZoom: 0.6, pageZoom: 0.66, entering: true });
 }

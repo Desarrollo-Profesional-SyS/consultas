@@ -178,7 +178,8 @@ function recompute() {
   data.best = bestGain(rows);
   data.qstate = roomData.q || {};
   data.qs = {};
-  for (const qid of Object.keys(QUESTIONS)) data.qs[qid] = summarize(qid, roomData.qa?.[qid], rows, roomData.qhide?.[qid]);
+  const comments = (qid) => Object.fromEntries(rows.map((r) => [r.id, roomData.players?.[r.id]?.c?.[qid]]));
+  for (const qid of Object.keys(QUESTIONS)) data.qs[qid] = summarize(qid, roomData.qa?.[qid], rows, roomData.qhide?.[qid], QUESTIONS[qid].type === 'text' ? comments(qid) : {});
   data.extras = playerExtras(roomData.qa || {});
   data.now = store.now();
   if (deck?.el) renderLive(deck.el, data);
@@ -202,7 +203,7 @@ function schedulePublish() {
         rateAvg: data.qs.rating?.avg != null ? round1(data.qs.rating.avg) : null,
         chunkOk: data.qs.chunk?.ok?.length || 0,
         mythsPct: allN ? Math.round((allOk / allN) * 100) : null,
-        quotes: (data.qs.cierre?.visible || []).slice(0, 6).map((a) => ({ name: a.name, avatar: a.avatar, v: a.v, area: a.area || '' })),
+        quotes: (data.qs.cierre?.visible || []).slice(-6).reverse().map((a) => ({ name: a.name, avatar: a.avatar, v: a.v, area: a.area || '' })),
       },
     };
     for (const r of data.rows) {

@@ -169,8 +169,12 @@ export function buildTable(players, answers, overrides, kicked = {}) {
       };
     });
   rows.sort((a, b) => b.total - a.total || b.r2 - a.r2 || a.t2 - b.t2 || a.t1 - b.t1 || a.name.localeCompare(b.name));
-  // El orden ya desempata (ronda 2 y luego quién terminó primero), así que no hay lugares compartidos.
-  rows.forEach((r, i) => { r.place = i + 1; });
+  // Mismo puntaje, mismo lugar: 1, 1, 1, 2, 3, 3… (el orden de arriba solo acomoda la lista).
+  let place = 0;
+  rows.forEach((r, i) => {
+    if (i === 0 || r.total !== rows[i - 1].total) place++;
+    r.place = place;
+  });
   return rows;
 }
 
@@ -294,8 +298,10 @@ export function playerExtras(qa = {}) {
   return out;
 }
 
-// Resumen de una pregunta para pantallas y panel. answers = { uid: { v, area, t } }.
-export function summarize(qid, answers, rows, hidden = {}) {
+// Resumen de una pregunta para pantallas y panel. answers = { uid: { v, area, t } } (la última de
+// cada quien). comments = { uid: { t: { v, area } } }: en las preguntas de texto cada quien puede
+// mandar varios comentarios y se guardan todos.
+export function summarize(qid, answers, rows, hidden = {}, comments = {}) {
   const q = QUESTIONS[qid];
   const ids = new Set(rows.map((r) => r.id));
   const byId = Object.fromEntries(rows.map((r) => [r.id, r]));
@@ -314,7 +320,17 @@ export function summarize(qid, answers, rows, hidden = {}) {
     out.ok = scored.filter((a) => a.ok);
     out.avgHits = scored.length ? scored.reduce((s, a) => s + a.hits, 0) / scored.length : null;
   } else if (q.type === 'text') {
-    out.visible = list.filter((a) => !a.hidden);
+    const all = [];
+    for (const a of list) {
+      const mine = comments?.[a.id];
+      const items = mine && Object.keys(mine).length
+        ? Object.entries(mine).filter(([, c]) => c && c.v).map(([t, c]) => ({ ...a, v: c.v, area: c.area || '', t: +t }))
+        : [a];
+      for (const c of items) all.push({ ...c, key: `${c.id}:${c.t}` });
+    }
+    all.sort((x, y) => (x.t || 0) - (y.t || 0)); // en orden de llegada
+    out.all = all;
+    out.visible = all.filter((a) => !a.hidden);
   }
   return out;
 }

@@ -128,8 +128,10 @@ export class Room {
     return this.store.update(this.p(`q/${qid}`), { open: false, closedAt: this.store.now(), left: left || null, ...(reveal ? { revealed: true } : {}) });
   }
 
-  resetQuestion(qid) {
-    return this.store.update(this.p(), { [`q/${qid}`]: null, [`qa/${qid}`]: null, [`qhide/${qid}`]: null });
+  resetQuestion(qid, uids = []) {
+    const patch = { [`q/${qid}`]: null, [`qa/${qid}`]: null, [`qhide/${qid}`]: null };
+    for (const uid of uids) patch[`players/${uid}/c/${qid}`] = null;
+    return this.store.update(this.p(), patch);
   }
 
   hideAnswer(qid, uid, hidden) {
@@ -138,6 +140,14 @@ export class Room {
 
   answerQuestion(qid, value, extra = {}, uid = this.store.uid) {
     return this.store.set(this.p(`qa/${qid}/${uid}`), { v: value, ...extra, t: this.store.now() });
+  }
+
+  // Preguntas de texto: cada comentario se suma (no reemplaza). La última también queda en qa
+  // (las reglas revisan ahí que la pregunta siga abierta) y todos se guardan en la ficha del jugador.
+  async addComment(qid, value, extra = {}, uid = this.store.uid) {
+    const t = this.store.now();
+    await this.store.set(this.p(`qa/${qid}/${uid}`), { v: value, ...extra, t });
+    await this.store.set(this.p(`players/${uid}/c/${qid}/${t}`), { v: value, ...extra });
   }
 
   react(r, uid = this.store.uid) {

@@ -29,10 +29,14 @@ html, body { height: 100%; overflow: hidden; background: var(--ink); }
 
 /* Avatares dentro de las diapositivas en vivo */
 .av { display: block; flex: none; }
-.lobby-chip { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 86px; }
-.lobby-chip span { font-size: 19px; font-weight: 800; color: var(--cream); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; }
-.range-chip { display: flex; flex-direction: row; align-items: center; gap: 3px; background: rgba(255,244,224,.14); border-radius: 999px; padding: 1px 8px 1px 1px; max-width: 100px; }
-.range-chip span { font-size: 17px; font-weight: 800; color: inherit; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.lobby-chip { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 96px; }
+.lobby-chip span { font-size: 18px; font-weight: 800; color: var(--cream); max-width: 100%; text-align: center; overflow-wrap: anywhere; line-height: 1.1; }
+.tight .lobby-chip { width: 80px; }
+.tight .lobby-chip svg { width: 48px; height: 48px; }
+.tight .lobby-chip span { font-size: 15px; }
+.tighter .lobby-chip { width: 66px; }
+.tighter .lobby-chip svg { width: 36px; height: 36px; }
+.tighter .lobby-chip span { font-size: 13px; }
 
 /* Controles flotantes (aparecen al mover el mouse) */
 #hud {

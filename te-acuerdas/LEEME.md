@@ -24,7 +24,7 @@ Costo: **$0**. Usa GitHub Pages para la página y el plan gratuito de Firebase p
 | Sala (2) | Avatar y nombre, luego «Mira la pantalla» | QR y avatares que van llegando |
 | ¡Hola, cerebros! | Calificar su memoria del 1 al 10 | Promedio, barras y votos en vivo |
 | Portadas de ronda | «RONDA 1 · TU MEMORIA» (y las demás) | Número gigante, título y sonido de concurso |
-| ¿Qué recuerdas…? (gancho) | Respuesta libre (80 letras) | Burbujas con avatar y nombre, las 6 más recientes |
+| ¿Qué recuerdas…? (gancho) | Comentarios libres (80 letras), los que quieran | Todas las burbujas completas, con avatar y nombre |
 | Tu límite (miller) | Sí / No | Barras con porcentaje (salen con el primer clic) |
 | Memoriza este número | Campo para el número, se abre cuando el número se borra | El primer clic lo muestra 5 s con cuenta regresiva y se oculta solo |
 | ¿Quién se lo supo? | «¡Lo recordaste!» o cuántos dígitos acertó | Nombres de quienes lo lograron y cuántos no |
@@ -32,13 +32,13 @@ Costo: **$0**. Usa GitHub Pages para la página y el plan gratuito de Firebase p
 | Mito 1 a 4 | Verdadero / Falso | Conteo y nombres por columna; el clic que revela cierra el voto |
 | El reto (reto + 20 palabras) | «Mira la pantalla» y la palabra en curso | Cada palabra dura 5 s y avanza sola |
 | Escribe del 1 al 20 | Ronda 1 (2 min) | Reloj y cuántos ya terminaron |
-| ¿Por qué calcetines era el 2? | Respuesta libre | Burbujas con las respuestas |
+| ¿Por qué calcetines era el 2? | Comentarios libres, los que quieran | Todas las burbujas completas |
 | Las 20 otra vez… en desorden | Ronda 2 (3 min) | Reloj |
 | Antes y después | Su resultado | Promedios, mayor mejora y la calificación inicial |
-| Tu turno + Muro | Respuesta libre y área (opcional) | Muro con tarjetas de texto, área y nombre |
+| Tu turno + Muro | Comentarios libres y área (opcional), los que quieran | Muro con todas las tarjetas completas, área y nombre |
 | ¡Gracias, cerebros! (resumen) | Su resultado y el botón **Descargar mi recuerdo (PDF)** | Todos los avatares con sus palabras de la ronda 1 → 2 y los datos del grupo |
 
-En la pantalla, cada respuesta lleva el avatar y el **nombre** de quien la dio (burbujas, votos A-D y V/F, rangos de resultados), para ver quién lo hace bien.
+En la pantalla, cada respuesta lleva el avatar y el **nombre completo** de quien la dio (burbujas, votos A-D y V/F, rangos de resultados, podio y resumen), sin importar cuántos jugadores sean. Si algo no cabe, primero se achica y, si aun así no cabe, **rota solo en carrusel** con puntitos de página. Cada comentario se guarda (los de cada quien quedan en su ficha de jugador).
 
 **Reacciones:** abajo en el celular hay 6 botones (😂 ¡Jajaja!, 👏 ¡Bravo!, 🤯 ¡Me explotó!, 🧠 ¡Cerebrito!, 😴 Zzz, 🎺 ¡Ups!). Salen flotando en la pantalla de Joss con el nombre de quien la mandó y un sonido chistoso. Se apagan mientras pasan las palabras y durante las rondas.
 
@@ -97,7 +97,7 @@ Para ensayar sin Firebase y sin celulares, agrega `?ensayo&segundos=20` al final
 - Se aceptan respuestas sin acentos, en plural o singular, con un error de dedo, y sinónimos (coche, INE, tapabocas, compu, celular, nave espacial, ∞…).
 - Si una respuesta se parece más a otra palabra de la lista, no cuenta. Por ejemplo, «manos» en la 20 no vale porque es la 10.
 - Alex puede marcar cualquier respuesta como buena o mala en **Revisar respuestas**. Se aplica a todos los que la escribieron.
-- **Empates:** gana quien sacó más en la ronda 2, y luego quien terminó primero.
+- **Empates:** mismo puntaje, mismo lugar (1, 1, 1, 2, 3…). En el podio los empatados suben juntos al escalón y del 4.º lugar en adelante salen todos.
 
 ## Cambiar cosas
 

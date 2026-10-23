@@ -95,7 +95,7 @@ export const GUION = {
         J('Vamos a ver por qué.'),
       ),
     ],
-    tip: 'Alex puede ocultar una respuesta en su panel (Preguntas) antes de que salga.',
+    tip: 'Cada quien puede mandar varios comentarios y todos salen completos; si no caben, rotan solos en pantalla (carrusel). Alex puede ocultar los de alguien en su panel (Preguntas).',
   },
   memoria: {
     t: '7:30–9:00',
@@ -359,6 +359,7 @@ export const GUION = {
         J('Giro de trama: ¿por qué calcetines era el 2? Escríbanlo en su celular.'),
         A('(Lee 2 o 3 burbujas con el nombre.)'),
       ),
+      during('Si hay muchas respuestas', A('(Rotan solas en carrusel; lee las que vayan saliendo.) Pueden mandar más de una, ¿eh?')),
       click(1, 'aparece el sello «¡Son un par!»',
         J('¡Porque son un par! Nada era al azar.'),
         A('Cada palabra estaba colgada de su número. Vamos a ver el código completo.'),
@@ -445,14 +446,15 @@ export const GUION = {
     t: '39:00–40:00',
     beats: [
       enter(A('La tabla final: ronda 1 más ronda 2, máximo 40 puntos. ¿Quién se acordó de más?')),
-      click(1, 'tercer lugar', J('En tercer lugar… (lee nombre y puntos).')),
-      click(2, 'segundo lugar', A('En segundo lugar… (lee nombre y puntos).')),
-      click(3, '¡primer lugar! (confeti y fanfarria)', J('Y el primer lugar es para… ¡(nombre)!'), A('¡Todos, mándenle 👏!')),
-      click(4, 'del 4.º al 10.º',
+      click(1, 'tercer lugar', J('En tercer lugar… (lee los nombres y los puntos).')),
+      click(2, 'segundo lugar', A('En segundo lugar… (lee los nombres y los puntos).')),
+      click(3, '¡primer lugar! (confeti y fanfarria)', J('Y el primer lugar es para… ¡(nombres)!'), A('¡Todos, mándenle 👏!')),
+      click(4, 'todos los demás, con sus puntos',
         A('(Lee los nombres.)'),
         J('Ustedes también ganaron: ya saben algo que el resto de la oficina no.'),
       ),
     ],
+    tip: 'Mismo puntaje, mismo lugar: los empatados suben juntos al escalón. Del 4.º lugar en adelante salen todos con sus puntos; si no caben, rotan solos.',
   },
   porque: {
     t: '40:00–41:30',
@@ -477,7 +479,7 @@ export const GUION = {
     beats: [
       enter(
         J('Su turno: ¿qué les cuesta recordar o enseñar en su trabajo… y de qué lo podrían colgar? Escríbanlo en su celular y elijan su área.'),
-        A('Les damos ideas para destrabar.'),
+        A('Pueden mandar varios. Les damos ideas para destrabar.'),
       ),
       during('Ganchos por área (se turnan; lean solo los de las áreas que están conectadas)',
         ...AREA_HOOKS.map(([area, hook], i) => [i % 2 ? 'A' : 'J', `${area}: ${hook}`])),

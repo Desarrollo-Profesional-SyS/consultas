@@ -46,9 +46,15 @@ function answerItem(label, value, ok = null) {
 function pageMine(d) {
   const { me, res = {}, meta = {}, qa = {}, fecha } = d;
   const label = (qid, v) => QUESTIONS[qid].options?.find((o) => o.id === v)?.label;
+  // Varios comentarios: los 3 más recientes completos y cuántos más hubo.
+  const said = (a) => {
+    const all = a.all?.length ? a.all : [a.v];
+    const last = all.slice(-3);
+    return last.map((v) => `«${escapeHtml(v)}»`).join(' ') + (all.length > 3 ? ` <span style="color:${C.mist}">(y ${all.length - 3} más)</span>` : '');
+  };
   const items = [];
   if (qa.rating?.v) items.push(answerItem('TU MEMORIA, CALIFICADA POR TI AL INICIO', `${qa.rating.v} de 10${meta.rateAvg != null ? ` (el grupo: ${meta.rateAvg})` : ''}`));
-  if (qa.gancho?.v) items.push(answerItem('LO QUE RECORDABAS DE TU ÚLTIMA CAPACITACIÓN', `«${escapeHtml(qa.gancho.v)}»`));
+  if (qa.gancho?.v) items.push(answerItem('LO QUE RECORDABAS DE TU ÚLTIMA CAPACITACIÓN', said(qa.gancho)));
   if (qa.cuarto?.v) items.push(answerItem('¿ENTRASTE A UN CUARTO Y OLVIDASTE A QUÉ IBAS?', label('cuarto', qa.cuarto.v)));
   if (qa.chunk?.v) {
     const c = chunkScore(qa.chunk.v);
@@ -60,8 +66,8 @@ function pageMine(d) {
     const ok = mitos.filter((id) => qa[id].v === QUESTIONS[id].correct).length;
     items.push(answerItem('MITOS: ¿VERDADERO O FALSO?', `Le atinaste a ${ok} de ${mitos.length} · ${mitos.map((id) => `${id.slice(-1)}${qa[id].v === QUESTIONS[id].correct ? '✓' : '✗'}`).join('  ')}`));
   }
-  if (qa.revela?.v) items.push(answerItem('¿POR QUÉ CALCETINES ERA EL 2?', `«${escapeHtml(qa.revela.v)}»`));
-  if (qa.cierre?.v) items.push(answerItem('LO QUE TE CUESTA RECORDAR… Y DE DÓNDE COLGARLO', `«${escapeHtml(qa.cierre.v)}»${qa.cierre.area ? ` · ${escapeHtml(qa.cierre.area)}` : ''}`));
+  if (qa.revela?.v) items.push(answerItem('¿POR QUÉ CALCETINES ERA EL 2?', said(qa.revela)));
+  if (qa.cierre?.v) items.push(answerItem('LO QUE TE CUESTA RECORDAR… Y DE DÓNDE COLGARLO', `${said(qa.cierre)}${qa.cierre.area ? ` · ${escapeHtml(qa.cierre.area)}` : ''}`));
 
   const gain = res.p1 && res.p2 ? res.r2 - res.r1 : null;
   return page(`

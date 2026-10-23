@@ -204,7 +204,7 @@ const Q_TITLES = { rating: 'Calificar tu memoria (1-10)', gancho: 'La última ca
 
 function questionSummaryHtml(qid) {
   const q = QUESTIONS[qid];
-  const sm = summarize(qid, data.qa?.[qid], rows, data.qhide?.[qid]);
+  const sm = summarize(qid, data.qa?.[qid], rows, data.qhide?.[qid], Object.fromEntries(rows.map((r) => [r.id, data.players?.[r.id]?.c?.[qid]])));
   const st = data.q?.[qid] || {};
   const status = st.open ? '<span class="pill" style="background:var(--lime);color:var(--night)">ABIERTA</span>' : st.closedAt ? '<span class="pill">CERRADA</span>' : '<span class="pill">SIN ABRIR</span>';
   let body = '';
@@ -212,8 +212,8 @@ function questionSummaryHtml(qid) {
   if (q.type === 'choice') body = `<div class="row">${q.options.map((o) => `<span class="pill">${escapeHtml(o.label)}: <b style="color:var(--cream)">${sm.byOption[o.id].length}</b></span>`).join('')}${q.correct ? `<span class="muted">Correcta: ${escapeHtml(q.options.find((o) => o.id === q.correct).label)}</span>` : ''}</div>`;
   if (q.type === 'number') body = `<p class="lead">Lo recordaron completo: <b>${sm.ok.length}</b> · promedio de dígitos: <b>${sm.avgHits != null ? sm.avgHits.toFixed(1) : '—'}</b> de 10</p>`;
   if (q.type === 'text') {
-    body = `<div class="answers-list">${sm.list.map((a) => `<button class="ans ${a.hidden ? 'no' : 'ok'}" data-hide="${qid}|${escapeHtml(a.id)}|${a.hidden ? 0 : 1}" title="${a.hidden ? 'Oculta · clic para mostrarla' : 'En pantalla · clic para ocultarla'}">${a.hidden ? '🙈' : '✓'} ${escapeHtml(a.v)} <small>${escapeHtml(a.name)}${a.area ? ' · ' + escapeHtml(a.area) : ''}</small></button>`).join('') || '<span class="muted">Sin respuestas todavía.</span>'}</div>
-      ${sm.list.length ? '<p class="muted">Toca una respuesta para ocultarla de la pantalla (o regresarla).</p>' : ''}`;
+    body = `<div class="answers-list">${sm.all.map((a) => `<button class="ans ${a.hidden ? 'no' : 'ok'}" data-hide="${qid}|${escapeHtml(a.id)}|${a.hidden ? 0 : 1}" title="${a.hidden ? 'Oculta · clic para mostrarla' : 'En pantalla · clic para ocultarla'}">${a.hidden ? '🙈' : '✓'} ${escapeHtml(a.v)} <small>${escapeHtml(a.name)}${a.area ? ' · ' + escapeHtml(a.area) : ''}</small></button>`).join('') || '<span class="muted">Sin respuestas todavía.</span>'}</div>
+      ${sm.all.length ? `<p class="muted"><b>${sm.all.length}</b> comentarios. Toca uno para ocultar de la pantalla los de esa persona (o regresarlos).</p>` : ''}`;
   }
   return `<div class="word" style="grid-template-columns:1fr">
     <div class="row" style="justify-content:space-between">
@@ -245,7 +245,7 @@ function renderQuestions() {
 function bindQuestionButtons() {
   tabEl.querySelectorAll('[data-qopen]').forEach((b) => (b.onclick = () => room.openQuestion(b.dataset.qopen)));
   tabEl.querySelectorAll('[data-qclose]').forEach((b) => (b.onclick = () => room.closeQuestion(b.dataset.qclose, { reveal: !!QUESTIONS[b.dataset.qclose].correct })));
-  tabEl.querySelectorAll('[data-qreset]').forEach((b) => (b.onclick = () => confirm('¿Borrar todos los votos de esta pregunta y dejarla sin abrir?') && room.resetQuestion(b.dataset.qreset)));
+  tabEl.querySelectorAll('[data-qreset]').forEach((b) => (b.onclick = () => confirm('¿Borrar todos los votos de esta pregunta y dejarla sin abrir?') && room.resetQuestion(b.dataset.qreset, Object.keys(data.players || {}))));
   tabEl.querySelectorAll('[data-hide]').forEach((b) => (b.onclick = () => {
     const [qid, uid, hide] = b.dataset.hide.split('|');
     room.hideAnswer(qid, uid, hide === '1');
@@ -407,7 +407,7 @@ function renderRehearsal() {
   };
   $('wipe').onclick = async () => {
     if (!confirm('¿Borrar las respuestas de las dos rondas y de todas las preguntas?')) return;
-    await Promise.all([room.resetRound(1), room.resetRound(2), store.remove(room.p('results')), ...Object.keys(QUESTIONS).map((qid) => room.resetQuestion(qid))]);
+    await Promise.all([room.resetRound(1), room.resetRound(2), store.remove(room.p('results')), ...Object.keys(QUESTIONS).map((qid) => room.resetQuestion(qid, Object.keys(data.players || {})))]);
     botsScheduled = {};
     toast('Rondas reiniciadas');
   };
@@ -436,7 +436,12 @@ function runBots() {
       botTimers.push(setTimeout(() => {
         if (!data.q?.[qid]?.open) return;
         const { v, ...extra } = botAnswer(qid);
-        room.answerQuestion(qid, v, extra, id);
+        if (QUESTIONS[qid].type !== 'text') return room.answerQuestion(qid, v, extra, id);
+        room.addComment(qid, v, extra, id);
+        if (Math.random() < 0.35) { // algunos mandan un segundo comentario
+          const more = botAnswer(qid);
+          botTimers.push(setTimeout(() => data.q?.[qid]?.open && room.addComment(qid, more.v, more.area ? { area: more.area } : {}, id), 1500 + Math.random() * 3000));
+        }
       }, 800 + Math.random() * 5000));
     }
   }

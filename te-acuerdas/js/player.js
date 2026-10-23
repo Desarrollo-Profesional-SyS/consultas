@@ -125,7 +125,8 @@ function render() {
   if (qid && QUESTIONS[qid]) {
     const qs = st.q?.[qid] || {};
     const mine = st.qa?.[qid];
-    return show(`q-${qid}-${qs.open ? 'o' : 'c'}-${qs.closedAt ? 'x' : ''}-${qs.revealed ? 'r' : ''}-${mine ? `${mine.v}|${mine.area || ''}|${mine.t}` : ''}-${st.state.slide}`, () => questionScreen(qid));
+    const nComments = Object.keys(st.players?.[store.uid]?.c?.[qid] || {}).length;
+    return show(`q-${qid}-${qs.open ? 'o' : 'c'}-${qs.closedAt ? 'x' : ''}-${qs.revealed ? 'r' : ''}-${mine ? `${mine.v}|${mine.area || ''}|${mine.t}` : ''}-${nComments}-${st.state.slide}`, () => questionScreen(qid));
   }
 
   const stage = st.state?.stage || 'pre';
@@ -370,14 +371,20 @@ function questionScreen(qid) {
     return;
   }
 
-  // Texto libre (con área opcional en el cierre)
+  // Texto libre (con área opcional en el cierre): cada quien manda los comentarios que quiera.
+  const sent = Object.entries(st.players?.[store.uid]?.c?.[qid] || {}).sort((a, b) => a[0] - b[0]).map(([, c]) => c);
+  if (!sent.length && mine) sent.push(mine);
   let area = mine?.area || '';
   view.innerHTML = `${head}
-    <textarea class="input" id="qin" maxlength="${q.max}" rows="3" placeholder="Escribe aquí (máximo ${q.max} letras)" style="resize:none;font-size:19px">${escapeHtml(mine?.v || '')}</textarea>
+    ${sent.length ? `<div class="card" style="text-align:left;display:flex;flex-direction:column;gap:8px">
+      <p class="label" style="margin:0">Tus comentarios (${sent.length}) · ya salen en la pantalla</p>
+      ${sent.map((c) => `<p class="lead" style="margin:0;font-size:17px">• ${escapeHtml(c.v)}${c.area ? ` <span class="muted">(${escapeHtml(c.area)})</span>` : ''}</p>`).join('')}
+    </div>` : ''}
+    <textarea class="input" id="qin" maxlength="${q.max}" rows="3" placeholder="${sent.length ? 'Escribe otro comentario' : `Escribe aquí (máximo ${q.max} letras)`}" style="resize:none;font-size:19px"></textarea>
     <p class="hint-text" id="qcount" style="align-self:flex-end;margin-top:-10px"></p>
     ${q.areas ? `<p class="label" style="align-self:flex-start">Tu área (opcional)</p><div class="row" id="areas" style="gap:8px">${q.areas.map((a) => `<button class="btn small ${a === area ? '' : 'dark'}" data-a="${escapeHtml(a)}">${escapeHtml(a)}</button>`).join('')}</div>` : ''}
-    <button class="btn" id="qsend" style="font-size:22px;min-height:58px">${mine ? 'Actualizar' : 'Enviar'}</button>
-    ${mine ? '<p class="lead">¡Listo! Ya sale en la pantalla. Puedes cambiarla mientras esté abierta.</p>' : ''}`;
+    <button class="btn" id="qsend" style="font-size:22px;min-height:58px">${sent.length ? 'Enviar otro comentario' : 'Enviar'}</button>
+    <p class="lead" style="font-size:15px">Puedes mandar los comentarios que quieras mientras la pregunta esté abierta.</p>`;
   const inp = $('qin');
   const count = () => ($('qcount').textContent = `${inp.value.length}/${q.max}`);
   inp.oninput = count;
@@ -386,10 +393,19 @@ function questionScreen(qid) {
     area = area === b.dataset.a ? '' : b.dataset.a;
     view.querySelectorAll('[data-a]').forEach((x) => x.classList.toggle('dark', x.dataset.a !== area));
   }));
-  $('qsend').onclick = () => {
+  $('qsend').onclick = async () => {
     const v = inp.value.replace(/\s+/g, ' ').trim().slice(0, q.max);
-    if (!v) return toast('Escribe tu respuesta');
-    send(qid, v, q.areas && area ? { area } : {});
+    if (!v) return toast('Escribe tu comentario');
+    $('qsend').disabled = true;
+    try {
+      await room.addComment(qid, v, q.areas && area ? { area } : {});
+      navigator.vibrate?.(20);
+      toast('¡Enviado! Ya sale en la pantalla');
+    } catch (e) {
+      console.warn(e);
+      toast('Ya se cerró esta pregunta');
+      if ($('qsend')) $('qsend').disabled = false;
+    }
   };
 }
 
@@ -622,7 +638,12 @@ function recuerdoData() {
     .filter(([id, p]) => p?.name && !st.kicked?.[id])
     .map(([id, p]) => ({ id, name: p.name, avatar: p.avatar ?? 0, ...(results[id] || {}) }))
     .sort((a, b) => (a.place || 999) - (b.place || 999) || a.name.localeCompare(b.name, 'es'));
-  return { me, uid: store.uid, res: results[store.uid] || {}, meta: results._meta || {}, players, qa: { ...st.qa } };
+  const qa = { ...st.qa };
+  const mineC = st.players?.[store.uid]?.c || {};
+  for (const [qid, list] of Object.entries(mineC)) {
+    if (qa[qid] && list) qa[qid] = { ...qa[qid], all: Object.entries(list).sort((a, b) => a[0] - b[0]).map(([, c]) => c.v) };
+  }
+  return { me, uid: store.uid, res: results[store.uid] || {}, meta: results._meta || {}, players, qa };
 }
 
 let pdfBusy = false;
