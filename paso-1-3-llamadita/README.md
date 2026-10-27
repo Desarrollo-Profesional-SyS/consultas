@@ -13,25 +13,17 @@ El análisis vive en el Google Sheets
 | Archivo | Contenido |
 |---|---|
 | `paso-1-3-libro-base.xlsx` | El libro con el que se creó el Sheets: 8 hojas, cada cifra es fórmula sobre las hojas de datos. |
-| `reporte_protocolo.json` | Las 3 hojas nuevas, listas para escribir en el Sheets: `Llamadita vs pregunta` (resumen con fórmulas), `Tras el audio` (406 leads) y `Respuestas a la llamadita` (95 respuestas clasificadas a mano). `meta` trae las filas de cada sección y las celdas con fórmula de matriz. |
+| `reporte_protocolo.json` | Las 3 hojas nuevas tal como se escribieron en el Sheets: `Llamadita vs pregunta` (resumen con fórmulas), `Tras el audio` (406 leads) y `Respuestas a la llamadita` (95 respuestas clasificadas a mano). `meta` trae las filas de cada sección y las celdas con fórmula de matriz. |
 | `scripts/` | Descarga (solo GET), clasificación y armado de las hojas. |
 
-## Pendiente: cargar las hojas nuevas en el Sheets
+## Hojas del reporte "Llamadita vs pregunta"
 
-Hace falta el conector de **Google Sheets** de claude.ai, conectado con una cuenta
-que pueda editar el archivo (su dueño es la cuenta de Google con la que se creó).
-
-1. Agregar con `update_spreadsheet` (`addSheet`) las hojas `Llamadita vs pregunta`,
-   `Tras el audio` y `Respuestas a la llamadita`, después de `Funciona 1.3`.
-2. Escribir cada matriz de `reporte_protocolo.json` desde `A1` con `update_formulas`.
-   Las celdas de `meta.arrays` (fila, columna, base 1) son medianas: escribirlas
-   como `=ARRAYFORMULA(MEDIAN(IF(...)))`.
-3. Dar el mismo formato que las demás hojas: títulos en Anton magenta `#800E64`,
-   encabezados de tabla con fondo `#800E64` y texto blanco en Poppins, secciones
-   (`meta.secciones`) en Anton con línea rosa `#E91E63`, porcentajes `0.0%`,
-   texto del veredicto y de las recomendaciones combinado de C a E con ajuste de línea.
-4. En `Resumen`, cambiar el renglón "El detalle" para que remita a la hoja nueva.
-5. Verificar con `get_values` que no haya errores.
+Cargadas en el Sheets el 27/10/2026 con el conector de Google Sheets:
+`Llamadita vs pregunta` (después de `Funciona 1.3`), `Tras el audio` y
+`Respuestas a la llamadita` (después de `Entradas a 1.3`). Se agregó un renglón
+"Llamadita" en "Qué conviene hacer" del Resumen y las definiciones del reporte
+al final de `Fuentes y método`. Los datos escritos se compararon renglón por
+renglón con `reporte_protocolo.json`, sin diferencias.
 
 ## Resultado principal
 

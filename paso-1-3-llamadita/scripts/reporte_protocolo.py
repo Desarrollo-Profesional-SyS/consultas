@@ -20,7 +20,8 @@ cab_a = ['Lead', 'Embudo', 'Quién mandó el audio', 'Franja de su respuesta al 
          'Pasó a 1.3', 'Min. del audio al primer mensaje que le pide respuesta', 'Abrió el chat antes de ese mensaje', 'Respondió en 30 min', 'Respondió en 2 h',
          'Respondió en 24 h', 'Mensajes que recibió antes de responder (2 h)', 'Horas del audio al Negativo', 'Recibió facilidades de pago en 24 h',
          'Llegó a 1.4 o más', 'Llegó a un medio de pago', 'Venta (Ganado o pago confirmado)', 'Con 7 días o más']
-filas_a = [[int(r.lead), r.embudo, r.audio_de, r.franja, r.protocolo, SN(r.con_pregunta), SN(r.con_13), R1(r.min_empujon),
+CORTO = {'Joceline Sarahi Benavides Serrano': 'Joceline', 'Salma Santos Hernández': 'Salma', 'José Alexander Morales': 'José', 'Ana Victoria de Leon': 'Ana Victoria'}
+filas_a = [[int(r.lead), r.embudo, CORTO.get(r.audio_de, r.audio_de), r.franja, r.protocolo, SN(r.con_pregunta), SN(r.con_13), R1(r.min_empujon),
             SN(r.leyo_antes_empujon) if pd.notna(r.min_empujon) else '', SN(r.resp_30m), SN(r.resp_2h), SN(r.resp_24h), int(r.msgs_antes_resp),
             R1(r.horas_a_neg), SN(r.faci_24h), SN(r.llego_14), SN(r.llego_pago), SN(r.venta), SN(r.maduro)] for _, r in A.iterrows()]
 cab_b = ['Lead', 'Qué contestó a "¿te hago una llamadita?" (en 30 min, antes del mensaje de facilidades)']
@@ -49,7 +50,7 @@ def med(col, pares):
 COLS = 'CDE'
 
 fila('¿La llamadita agrega valor?')
-fila('Pregunta abierta de Joceline contra el paso 1.3 · leads que contestaron el área a tiempo y recibieron audio · 5 al 27/10/2026 · CRM leído sin cambios')
+fila('Pregunta abierta sin pasar a 1.3 contra el paso 1.3 · leads que contestaron el área a tiempo y recibieron audio · 5 al 27/10/2026 · CRM leído sin cambios')
 fila(None)
 fila('VEREDICTO')
 VEREDICTO = len(S) + 1
@@ -99,7 +100,7 @@ for i, p in enumerate(PROT): S[r - 1][2 + i] = '=' + cnt(('E', p), ('S', 'Sí'),
 R_B['Ventas (número)'] = r
 fila('Con pocos casos las diferencias de venta no son concluyentes: ninguna diferencia de esta tabla es estadísticamente significativa (prueba exacta de Fisher, p > 0.1).')
 fila(None)
-fila('MISMA COMPARACIÓN, SOLO RESPUESTAS DE 9 A 18 H (EL TURNO DE JOCELINE)')
+fila('MISMA COMPARACIÓN, SOLO RESPUESTAS DE 9 A 18 H')
 fila('Indicador', *[NOMBRE[p] for p in PROT]); CAB3 = len(S)
 R_C = bloque(None, [
     ('Leads', 'n', None),
@@ -129,7 +130,7 @@ def T(ref, f='0%'): return f'TEXT({ref},"{f}")'
 rA, rB, rD = R_A, R_B, R_D
 VER = [
     ('Lo que sí se confirma', f'="La llamadita llega antes de que el lead vea el audio: sale a los "&{T(f"{T_}{rA["Minutos del audio al mensaje que pide respuesta (mediana)"]}", "0")}&" min y solo el "&{T(f"{T_}{rA["Abrieron el chat antes de ese mensaje"]}")}&" había abierto el chat. Y casi nadie toma la llamada: de "&{T(f"C{r_env}", "#,##0")}&" invitaciones, "&{T(f"C{rD[CLASES[0]]}+C{rD[CLASES[1]]}", "#,##0")}&" la aceptaron (la mayoría para otra hora o día) y solo hubo "&{T(f"C{rD["tareas"]}", "#,##0")}&" tareas de llamada."'),
-    ('Lo que no se sostiene', f'="La pregunta de Joceline no da más tiempo: sale a los "&{T(f"{P_}{rA["Minutos del audio al mensaje que pide respuesta (mediana)"]}", "0.0")}&" min del audio (solo el "&{T(f"{P_}{rA["Abrieron el chat antes de ese mensaje"]}")}&" había abierto el chat) y, como el lead se queda en 1.2, el bot le manda el Negativo a las "&{T(f"{P_}{rA["Horas del audio al Negativo (mediana)"]}", "0.0")}&" h del audio, contra "&{T(f"{T_}{rA["Horas del audio al Negativo (mediana)"]}", "0.0")}&" h en 1.3. Tampoco reciben menos mensajes: en promedio "&{T(f"{P_}{rA["Mensajes que reciben antes de responder (promedio)"]}", "0.0")}&" antes de responder, contra "&{T(f"{T_}{rA["Mensajes que reciben antes de responder (promedio)"]}", "0.0")}&" en 1.3."'),
+    ('Lo que no se sostiene', f'="La pregunta abierta, tal como se usa hoy, no da más tiempo: sale a los "&{T(f"{P_}{rA["Minutos del audio al mensaje que pide respuesta (mediana)"]}", "0.0")}&" min del audio (solo el "&{T(f"{P_}{rA["Abrieron el chat antes de ese mensaje"]}")}&" había abierto el chat) y, como el lead se queda en 1.2, el bot le manda el Negativo a las "&{T(f"{P_}{rA["Horas del audio al Negativo (mediana)"]}", "0.0")}&" h del audio, contra "&{T(f"{T_}{rA["Horas del audio al Negativo (mediana)"]}", "0.0")}&" h en 1.3. Tampoco reciben menos mensajes: en promedio "&{T(f"{P_}{rA["Mensajes que reciben antes de responder (promedio)"]}", "0.0")}&" antes de responder, contra "&{T(f"{T_}{rA["Mensajes que reciben antes de responder (promedio)"]}", "0.0")}&" en 1.3."'),
     ('Resultado', f'="Prácticamente igual. Responden en 2 h el "&{T(f"{P_}{rA["Respondieron en 2 h"]}")}&" con la pregunta y el "&{T(f"{T_}{rA["Respondieron en 2 h"]}")}&" con 1.3; llegan a 1.4 o más el "&{T(f"{P_}{rB["Llegaron a 1.4 o más"]}")}&" y el "&{T(f"{T_}{rB["Llegaron a 1.4 o más"]}")}&"; compran el "&{T(f"{P_}{rB["Venta"]}", "0.0%")}&" y el "&{T(f"{T_}{rB["Venta"]}", "0.0%")}&". La diferencia real: con la pregunta solo el "&{T(f"{P_}{rA["Recibieron facilidades de pago en 24 h"]}")}&" recibe las facilidades de pago en 24 h, contra "&{T(f"{T_}{rA["Recibieron facilidades de pago en 24 h"]}")}&" en 1.3."'),
     ('La mejor combinación', f'="La pregunta abierta dentro de 1.3 (como lo hace José) tiene la respuesta más alta en 30 min: "&{T(f"{J_}{rA["Respondieron en 30 min"]}")}&", contra "&{T(f"{T_}{rA["Respondieron en 30 min"]}")}&" con la llamadita sola. Es una señal, no una diferencia comprobada."'),
     ('¿Agrega valor 1.3?', '="La llamadita automática no agrega valor medible: el mismo resultado se logra con una pregunta abierta. Lo que sí aporta 1.3 es que todos reciban la oferta de facilidades de pago y que el lead no caiga en el Negativo a las 2 h. Conviene conservar el paso, sin la llamada como mensaje automático."'),
@@ -137,7 +138,7 @@ VER = [
 ]
 RECOS = [
     ('Ya', 'Que ningún lead que contestó el área se quede en 1.2: con 1.2 el Negativo llega a las 2 h de la pregunta. Mientras se ajusta el bot, el lead pasa a 1.3 después del audio y de la pregunta abierta.'),
-    ('Bot de 1.3', 'Cambiar el primer mensaje: en lugar de "¿te hago una llamadita?", la pregunta abierta de Joceline. Las facilidades de pago, cuando conteste que sí o como botón. Que el bot se detenga si el cliente contesta y que nunca mande el Negativo con una conversación abierta.'),
+    ('Bot de 1.3', 'Cambiar el primer mensaje: en lugar de "¿te hago una llamadita?", la pregunta abierta ("¿qué te parece mi recomendación…?"). Las facilidades de pago, cuando conteste que sí o como botón. Que el bot se detenga si el cliente contesta y que nunca mande el Negativo con una conversación abierta.'),
     ('Rediseño v4', 'Coincide con el cierre de la versión 4: "¿Te muestro tus pagos o te llamo 5 minutos?" y el seguimiento de las 3 h "¿Pudiste escuchar el audio?". La llamada queda como una de dos salidas que elige el lead.'),
     ('Entrada automática', 'Que el CRM pase solo a 1.3 a quien contesta la pregunta del área (o cuando se manda la plantilla del audio) y avise al asesor. Así el paso deja de depender de quién atiende.'),
     ('Cómo medirlo', 'Probar la versión nueva de 1.3 contra la actual con leads asignados al azar, unas 5 semanas (unos 300 leads por grupo para ver de 20% a 30% de avance a 1.4). Medir respuesta en 2 h, avance a 1.4 y venta.'),
@@ -150,7 +151,11 @@ for i, (t, x) in enumerate(RECOS):
 meta = {'resumen_filas': len(S), 'veredicto': VEREDICTO, 'reco': RECO, 'cabeceras': [CAB1, CAB2, CAB3, CAB4], 'arrays': arr,
         'secciones': [i + 1 for i, row in enumerate(S) if isinstance(row[1], str) and row[1].isupper()], 'na': NA, 'nb': NB}
 def limpio(m): return [[None if v is None else v for v in row] for row in m]
-json.dump({'Llamadita vs pregunta': limpio(S), 'Tras el audio': limpio(hoja_a), 'Respuestas a la llamadita': limpio(hoja_b), 'meta': meta},
+S_sheets = [list(row) for row in S]
+for (rr, cc) in arr:
+    f = S_sheets[rr - 1][cc - 1]
+    S_sheets[rr - 1][cc - 1] = '=ARRAYFORMULA(' + f[1:] + ')'
+json.dump({'Llamadita vs pregunta': limpio(S_sheets), 'Tras el audio': limpio(hoja_a), 'Respuestas a la llamadita': limpio(hoja_b), 'meta': meta},
           open(SALIDA_JSON, 'w'), ensure_ascii=False)
 
 # xlsx de prueba
