@@ -31,11 +31,18 @@ Las cifras del periodo nuevo son fórmulas sobre la hoja Datos. Se comprobaron c
 
 ## Resultado
 
-- **El caso del proyecto sigue:** 1,021 de 1,100 leads (93%) no recibieron lo que les toca según su temperatura. Con 7 días o más al corte, 728 de 738 (98.6%). En la línea base fueron 541 de 620 (87%).
+El caso del proyecto mide lo que hoy existe. Se cuentan los leads que dicen a qué se dedican y los tibios y fríos. Un lead es caso si:
+
+- dijo a qué se dedica y no contestó en las 24 h siguientes al audio de recomendación del equipo, o no recibió audio;
+- o es tibio o frío y recibió la oferta de $2,799.
+
+La ruta en PDF con audio corto todavía no se usa: es la mejora que busca subir la respuesta después del audio.
+
+- **El problema sigue:** 635 de 914 leads medidos (69%). En la línea base fueron 323 de 531 (61%). Con la misma ventana de 7 días por lead: 75% en la línea base y 73.5% ahora.
+- **Recomendación con audio:** 365 leads (1 de cada 3) dijeron a qué se dedican. El 93% recibió audio del equipo en 5 minutos (mediana), que dura 1 min 43 s. El 41% ya no contestó en 24 h. Quien contesta compra 7.5%; quien no, 1.4%.
 - **Tibios y fríos:** son la mitad de los leads y dejaron 4 de las 31 ventas. Aun así, 470 de 549 recibieron la oferta de $2,799, y a ellos se fueron 638 de las 1,270 plantillas pagadas estimadas.
-- **Precio:** 21 de las 31 ventas fueron con descuento, $29,036 por debajo de lista. El precio promedio bajó de $3,438 a $3,111.
-- **Plantillas pagadas:** las contestó el 4.9% (antes 7.6%). Con la misma ventana de 7 días, 5.2% contra 7.3%.
-- **Atención personalizada:** ningún lead caliente recibió su ruta en PDF y un audio de 1 minuto juntos.
+- **Precio:** 21 de 31 ventas fueron con descuento, $29,036 por debajo de lista. El precio promedio bajó de $3,438 a $3,111.
+- **Plan:** arranque el 9 de noviembre en Promo Lean, el embudo donde se hacen las correcciones. Lo encabeza Joceline Benavides, autora del proyecto.
 
 ## Validación
 

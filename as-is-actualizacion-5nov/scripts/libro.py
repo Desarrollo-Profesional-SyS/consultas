@@ -45,6 +45,10 @@ COLS = [
     ('Segundos del 1er audio del equipo', lambda r: nz(round(r.dur_1er_audio_s)) if nz(r.dur_1er_audio_s) is not None else None),
     ('¿Audio del equipo de 1 min o menos?', lambda r: si(r.audio_corto)),
     ('¿Recibió ruta personalizada en PDF?', lambda r: si(r.ruta_pdf)),
+    ('¿Recibió audio del equipo después de decir a qué se dedica?', lambda r: si(r.aud_occ == True) if r.contesto_area == True else None),
+    ('Minutos de su respuesta al audio', lambda r: round(r.min_aud, 1) if r.contesto_area == True and nz(r.min_aud) is not None else None),
+    ('Segundos del audio de recomendación', lambda r: round(r.seg_aud) if r.contesto_area == True and nz(r.seg_aud) is not None else None),
+    ('¿Contestó en 24 h después del audio?', lambda r: si(r.resp24_aud == True) if r.contesto_area == True and r.aud_occ == True else None),
     ('¿Recibió oferta?', lambda r: si(r.recibio_oferta)),
     ('¿Recibió $3,799?', lambda r: si(r.recibio_3799)),
     ('¿Recibió $2,799?', lambda r: si(r.recibio_2799)),
@@ -61,6 +65,7 @@ COLS = [
     ('Señal: dijo que le interesa', lambda r: si(r.senal_interes)),
     ('Plantillas pagadas (estimado)', lambda r: int(r.plantillas_pagadas)),
     ('Respuestas a plantillas pagadas', lambda r: int(r.plantillas_pagadas_resp)),
+    ('¿Entra en la medición del proyecto?', lambda r: si(r.contesto_area == True or r.temperatura != 'Caliente')),
     ('¿Es caso del proyecto?', None),
     ('¿Meta retuvo algún mensaje?', lambda r: si(r.meta_retenido)),
     ('Estado', lambda r: r.estado),
@@ -86,8 +91,8 @@ for i, r in enumerate(N.itertuples(), start=2):
     row = []
     for name, fn in COLS:
         if fn is None:
-            t, ru, au, d2 = (f'{C[x]}{i}' for x in ('Temperatura (primeras 24 h)', '¿Recibió ruta personalizada en PDF?', '¿Audio del equipo de 1 min o menos?', '¿Recibió $2,799?'))
-            row.append(f'=IF({t}="Caliente",IF(AND({ru}="Sí",{au}="Sí"),"No","Sí"),IF({d2}="Sí","Sí","No"))')
+            t, oc, au, rs, d2 = (f'{C[x]}{i}' for x in ('Temperatura (primeras 24 h)', '¿Contestó la ocupación?', '¿Recibió audio del equipo después de decir a qué se dedica?', '¿Contestó en 24 h después del audio?', '¿Recibió $2,799?'))
+            row.append(f'=IF({oc}="Sí",IF(AND({au}="Sí",{rs}="Sí"),"No","Sí"),IF(AND({t}<>"Caliente",{d2}="Sí"),"Sí","No"))')
         else:
             row.append(fn(r))
     ws_d.append(row)
@@ -160,7 +165,9 @@ M = [
     ('Plantillas pagadas (estimado)', lambda e: suma(e, 'Plantillas pagadas (estimado)'), NUM, 'plantillas', 'Fuera de la ventana de 24 h y después de las 72 h gratuitas del anuncio.'),
     ('% de respuesta a plantillas pagadas', lambda e: f"=IFERROR({suma(e, 'Respuestas a plantillas pagadas')[1:]}/{suma(e, 'Plantillas pagadas (estimado)')[1:]},\"\")", '0.0%', 'resp_plant', 'El lead escribe en las 24 h siguientes.'),
     ('Leads con mensajes retenidos por Meta', lambda e: '=' + cnt(e, ('¿Meta retuvo algún mensaje?', '"Sí"')), NUM, 'meta', '«Para mantener la salud del ecosistema».'),
-    ('% de leads que son caso del proyecto', lambda e: share(e, [('¿Es caso del proyecto?', 'Sí')]), PCT, 'caso_pct', 'Caliente sin ruta en PDF y audio de 1 min; tibio o frío con $2,799.'),
+    ('% que recibe audio del equipo después de decir a qué se dedica', lambda e: share(e, [('¿Recibió audio del equipo después de decir a qué se dedica?', 'Sí')], [('¿Contestó la ocupación?', 'Sí')]), PCT, 'audio_occ', 'De quienes dijeron a qué se dedican en 24 h.'),
+    ('% que contesta en 24 h después del audio', lambda e: share(e, [('¿Contestó en 24 h después del audio?', 'Sí')], [('¿Recibió audio del equipo después de decir a qué se dedica?', 'Sí')]), PCT, 'resp24', 'Lo que la ruta en PDF y el audio de 1 minuto buscan subir.'),
+    ('% con el problema del proyecto (de los medidos)', lambda e: share(e, [('¿Es caso del proyecto?', 'Sí')], [('¿Entra en la medición del proyecto?', 'Sí')]), PCT, 'caso_pct', 'Medidos: quienes dijeron a qué se dedican, más tibios y fríos.'),
     ('Ventas y precio', None),
     ('Ventas', lambda e: '=' + cnt(e, ('¿Compró?', '"Sí"')), NUM, 'ventas', 'Leads en Ganado al corte.'),
     ('Conversión (ventas ÷ leads)', lambda e: share(e, [('¿Compró?', 'Sí')]), '0.0%', 'conversion', ''),
@@ -253,7 +260,7 @@ for col in 'DEFGHIJKLMNO': ws_t.column_dimensions[col].width = 12
 # ---------------------------------------------------------------- Semanas
 ws_s = wb.create_sheet('Semanas', 2)
 hoja_titulo(ws_s, 'Semana a semana', SUB)
-encabezado(ws_s, 5, ['Semana', 'Días', 'Leads', '% deja de escribir en el saludo o antes', '% que recibe $2,799', '% de primeras ofertas del bot', 'Ventas', 'Ventas con descuento', '% de tibios y fríos con $2,799', '% de leads que son caso del proyecto'])
+encabezado(ws_s, 5, ['Semana', 'Días', 'Leads', '% deja de escribir en el saludo o antes', '% que recibe $2,799', '% de primeras ofertas del bot', 'Ventas', 'Ventas con descuento', '% de tibios y fríos con $2,799', '% con el problema del proyecto'])
 SEM = rng('Semana')
 for i, (sem, dias) in enumerate(TXT['semanas']):
     r = 6 + i
@@ -262,7 +269,7 @@ for i, (sem, dias) in enumerate(TXT['semanas']):
             f'=IFERROR(COUNTIFS({SEM},B{r},{rng("Primera oferta enviada por")},"Bot")/COUNTIFS({SEM},B{r},{rng("¿Recibió oferta?")},"Sí"),"")',
             f'=COUNTIFS({SEM},B{r},{rng("¿Compró?")},"Sí")', f'=COUNTIFS({SEM},B{r},{rng("¿Venta a precio de lista?")},"No")',
             f'=IFERROR((COUNTIFS({SEM},B{r},{T},"Tibio",{rng("¿Recibió $2,799?")},"Sí")+COUNTIFS({SEM},B{r},{T},"Frío",{rng("¿Recibió $2,799?")},"Sí"))/(COUNTIFS({SEM},B{r},{T},"Tibio")+COUNTIFS({SEM},B{r},{T},"Frío")),"")',
-            f'=IFERROR(COUNTIFS({SEM},B{r},{rng("¿Es caso del proyecto?")},"Sí")/D{r},"")']
+            f'=IFERROR(COUNTIFS({SEM},B{r},{rng("¿Es caso del proyecto?")},"Sí")/COUNTIFS({SEM},B{r},{rng("¿Entra en la medición del proyecto?")},"Sí"),"")']
     for j, v in enumerate(vals, start=2):
         c = ws_s.cell(r, j, v); c.font = F(10, j == 2, VINO if j == 2 else TINTA); c.border = LINEA
     for col, fmt in zip('DEFGHIJK', [NUM, PCT, PCT, PCT, NUM, NUM, PCT, PCT]): ws_s[f'{col}{r}'].number_format = fmt
@@ -291,14 +298,14 @@ ws_v.column_dimensions['B'].width = 46; ws_v.column_dimensions['C'].width = 18; 
 ws_r = wb.create_sheet('Resumen', 0)
 hoja_titulo(ws_r, 'Actualización As Is · ¿sigue el problema?', SUB)
 ws_r['B5'] = 'El caso del proyecto (plantilla de Mejoras · paso 2)'; ws_r['B5'].font = F(12, True, MAGENTA)
-encabezado(ws_r, 6, ['Medición', 'Día del corte', 'Leads revisados', 'Leads con el problema', '%', 'Calientes sin ruta en PDF y audio de 1 min', 'Tibios y fríos con $2,799'])
+encabezado(ws_r, 6, ['Medición', 'Día del corte', 'Leads medidos', 'Leads con el problema', '%', 'Dijeron a qué se dedican y no contestaron después del audio', 'Tibios y fríos con $2,799'])
 CASO = rng('¿Es caso del proyecto?')
 filas_caso = [
     ['Línea base · 5 al 15 oct'] + BASE['caso'],
-    ['Actualización · 16 oct al 5 nov', TXT['corte_corto'], f'=COUNTA({rng("ID (#)")})', f'=COUNTIFS({CASO},"Sí")', '=E8/D8',
-     f'=COUNTIFS({T},"Caliente",{CASO},"Sí")', f'=COUNTIFS({T},"Tibio",{CASO},"Sí")+COUNTIFS({T},"Frío",{CASO},"Sí")'],
-    ['Actualización · solo leads con 7 días o más', TXT['corte_corto'], f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí")', f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{CASO},"Sí")', '=E9/D9',
-     f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{T},"Caliente",{CASO},"Sí")', f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{T},"Tibio",{CASO},"Sí")+COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{T},"Frío",{CASO},"Sí")'],
+    ['Actualización · 16 oct al 5 nov', TXT['corte_corto'], f'=COUNTIFS({rng("¿Entra en la medición del proyecto?")},"Sí")', f'=COUNTIFS({CASO},"Sí")', '=E8/D8',
+     f'=COUNTIFS({rng("¿Contestó la ocupación?")},"Sí",{CASO},"Sí")', f'=COUNTIFS({T},"Tibio",{CASO},"Sí")+COUNTIFS({T},"Frío",{CASO},"Sí")'],
+    ['Actualización · solo leads con 7 días o más', TXT['corte_corto'], f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{rng("¿Entra en la medición del proyecto?")},"Sí")', f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{CASO},"Sí")', '=E9/D9',
+     f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{rng("¿Contestó la ocupación?")},"Sí",{CASO},"Sí")', f'=COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{T},"Tibio",{CASO},"Sí")+COUNTIFS({rng("¿Tiene 7 días o más al corte?")},"Sí",{T},"Frío",{CASO},"Sí")'],
 ]
 for i, vals in enumerate(filas_caso):
     r = 7 + i
