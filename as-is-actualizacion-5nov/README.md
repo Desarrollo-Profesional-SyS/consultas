@@ -6,6 +6,17 @@
 - **Corte:** 5 de noviembre de 2026, 13:30 h. Solo cuentan los mensajes, cambios de etapa y ventas que ocurrieron hasta esa hora.
 - **Tamaño:** 1,100 leads: 690 de ISO + Calidad, 183 de Manufactura y Calidad y 227 de Core Tools Premium.
 
+## Reporte para Dirección
+
+`Reporte_Direccion_Clasificacion_5nov.docx` (y su versión en PDF) resume el libro en 2 hojas, con la identidad de SyS de la propuesta anterior para Dirección:
+
+1. **Hoja 1:** la muestra del 16 de octubre al 5 de noviembre: cifras clave, hallazgos y quién compra.
+2. **Hoja 2:** la comparación con la primera muestra, lo que falta para arrancar y lo que se pide autorizar.
+
+`scripts/reporte.py` lo arma a partir de la propuesta anterior descomprimida.
+
+## Libro de Excel
+
 | Hoja | Contenido |
 |---|---|
 | Resumen | El caso del proyecto (plantilla de Mejoras, paso 2), los 10 puntos de la línea base medidos de nuevo, lo que cambió en el CRM y la conclusión |
