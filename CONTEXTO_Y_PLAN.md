@@ -65,12 +65,17 @@ El detalle técnico para hacerlo dentro del CRM está en `CLAUDE.md`.
 
 ### 3.1 Rediseñar el bot con dos clases de lead
 
-- **Horario de atención: de 7:00 a 22:00 h, de lunes a domingo.** Fuera de ese horario no sale ningún mensaje del CRM. La única excepción es la respuesta inmediata a quien escribe de noche: recibe la información básica y el aviso del horario.
+- **Dos horarios, de lunes a domingo:**
+  - **Atención del equipo:** de 7:00 a 22:00 h.
+  - **Bot:** de 8:00 a 21:00 h, para no escribir en horarios imprudentes.
+  - Fuera del horario del bot no sale ningún mensaje automático. La única excepción es la respuesta inmediata a quien escribe de noche: recibe la información básica y el aviso del horario de atención.
 - **El bot se presenta como «el asistente de Desarrollo Profesional SyS».** No usa el nombre de una persona, para distinguirse del asesor.
 - **No se pide el nombre para dar la información.** La bienvenida trae los botones «Más información» y «Solo el precio». Con el primero, el bot manda los beneficios, el costo y el flyer inicial.
 - **Dos clasificaciones dentro de cada embudo: Caliente y Frío.**
   - **Caliente:** toca «Más información», escribe algo o sigue después del precio. Lo atiende un asesor.
-  - **Frío:** no contesta en 2 h, o recibe el precio y ya no sigue. No se abandona: mientras la ventana de 24 h siga abierta, un asesor puede intentar pasarlo a caliente (17% contesta al mensaje de una persona, contra 1% al del bot). Después, el bot le da un seguimiento pausado: 5 plantillas en unos 60 días, sin oferta.
+  - **Frío:** no contesta en 2 h, o recibe el precio y ya no sigue. No se abandona.
+    - La etapa Frío es un espacio común. Mientras la ventana de 24 h siga abierta, cualquiera del equipo con tiempo (directivo, líder, asesor o auxiliar) puede intentar pasarlo a caliente: el 17% contesta al mensaje de una persona, contra 1% al del bot.
+    - Después, el bot le da un seguimiento pausado: 5 plantillas en unos 60 días, sin oferta.
   - Si un frío escribe en cualquier momento, pasa a Caliente.
   - Preguntar el precio no hace frío a nadie: de quienes preguntaron el costo, 19% compró.
 - **Toda rama de botones trata el texto libre igual que el botón positivo.** Los botones casi no se pulsan; el lead suele contestar con sus propias palabras.
@@ -79,11 +84,13 @@ El detalle técnico para hacerlo dentro del CRM está en `CLAUDE.md`.
 
 | Etapa | Cambio |
 |---|---|
-| 1 Saludo | Pasa a ser Bienvenida con botones, sin «Inge» ni la firma de una persona. |
+| 1 Saludo | Mismo nombre; ahora es la bienvenida con botones, sin «Inge» ni la firma de una persona. |
 | 1.1 y 1.2 | Su contenido pasa a la bienvenida. Las etapas se quedan, con el bot apagado. |
-| 1.4 Facilidades | Botones a cada forma de pago, con 45 días en quincenas. |
-| 1.3 Llamada | Ya no sale sola a media conversación. Se ofrece cuando el lead duda o está por decidir, junto con seguir por chat. Puede ser el cierre de la venta. |
-| 1 Negativo | Pasa a ser Seguimiento calientes: 5 plantillas en unos 15 días, sin ofertas ni urgencia. |
+| Caliente y Frío | Son las únicas etapas nuevas. Los demás nombres se conservan. |
+| 1.4 Facilidades | Botones a cada forma de pago. El pago en partes va en 3 o 4 pagos acomodados a las quincenas, hasta 45 días. Fechas y montos los acuerda el asesor. |
+| 1.3 Llamadita | Mismo nombre. Ya no sale sola a media conversación. Se ofrece cuando el lead duda o está por decidir, junto con seguir por chat. Puede ser el cierre de la venta. |
+| Negativo | Mismo nombre; ahora es el seguimiento de calientes: 5 plantillas en unos 15 días, sin ofertas ni urgencia. |
+| Etapas de pago | Se quita el seguimiento de «membresía premium» que terminaba en una oferta de $1,950. También se corrige la tarea de Core Tools que hablaba de $1,500. |
 | Ofertas de $3,799 y $2,799 | No se borran. Se quedan en el embudo y el flujo normal se las salta. Cualquier asesor las usa ante una objeción de precio, después de defender $3,999 con el pago en partes. La meta es vender más y a mayor precio. |
 
 Todos los textos van con un solo tono: trato de tú, neutral, sin modismos ni rigidez, una pregunta y un emoji como máximo.
@@ -99,7 +106,7 @@ Todos los textos van con un solo tono: trato de tú, neutral, sin modismos ni ri
 Aplica a todos los asesores y auxiliares:
 
 - Un solo precio: **$3,999**. La facilidad es pagar en partes, no el descuento.
-- **Pago en partes:** $1,000 de apartado y 2 abonos de $1,499.50 en quincena, **hasta 45 días**.
+- **Pago en partes:** 3 o 4 pagos acomodados a las quincenas, **hasta 45 días**. Puede ser un pago inicial y 2 abonos, o el pago inicial dividido en dos y 2 abonos. Fechas y montos los acuerda el asesor con el lead.
 - Decir siempre que la **DC-3 y el diploma ya vienen incluidos** en la membresía.
 - **Una sola pregunta por mensaje**, corto y sin link salvo que el lead lo pida.
 - Usar el **nombre del lead** en vez de «Inge».
@@ -107,7 +114,7 @@ Aplica a todos los asesores y auxiliares:
 - Sin urgencia falsa.
 - Textos neutros, que sirvan igual para asesoras y asesores.
 - **Seguimiento el mismo día**, de 2 a 4 h después de que el lead deja de contestar.
-- **Solo de 7:00 a 22:00 h.** El asesor se presenta con su nombre para distinguirse del bot.
+- **Solo de 7:00 a 22:00 h** (el bot, de 8:00 a 21:00 h). El asesor se presenta con su nombre para distinguirse del bot.
 
 ### 3.5 Dar de alta en Meta las plantillas para fuera de las 24 h
 
