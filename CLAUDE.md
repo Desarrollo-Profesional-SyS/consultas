@@ -60,11 +60,25 @@ Contiene:
    - Siempre como opción junto con seguir por chat, nunca como única vía.
    - La llamada puede ser el cierre de la venta.
 9. **Los pasos con precios de $2,799 y $3,799 no se borran.**
-   - Las etapas y los mensajes de esas ofertas se quedan en el embudo, pero el flujo normal **se los salta**.
-   - Solo se usan cuando haya una oferta autorizada.
+   - Las etapas y los mensajes de esas ofertas se quedan en el embudo, pero el flujo normal **se los salta**. El bot nunca manda una oferta por su cuenta.
+   - **Cualquier asesor puede usarlas**, sobre todo como respuesta a una objeción de precio.
+   - La meta es vender más **y a mayor precio**. Por eso el orden es:
+     1. defender $3,999 con el pago en partes;
+     2. si la objeción sigue, $3,799;
+     3. $2,799 solo como último recurso.
 10. **Lenguaje neutral y un solo tono.**
     - Nada de «Inge»: no todos los leads son ingenieros.
     - Todos los mensajes en la misma línea: un punto medio entre profesional y casual, para público en general (sección 5.6).
+11. **Los fríos no se abandonan: tienen un seguimiento más pausado.**
+    - El filtro existe para que los asesores dediquen su esfuerzo a los leads con más probabilidad de compra.
+    - Los fríos siguen recibiendo seguimiento, a un ritmo más lento. En cuanto escriben, se actualizan a Caliente.
+    - **Lo hace el bot**, con plantillas espaciadas en unos 60 días.
+    - **Mientras la ventana de 24 h siga abierta, un asesor puede intentar pasarlo a caliente** con un mensaje corto. Es lo más ágil y conviene hacerlo cuando haya capacidad.
+12. **Datos operativos ya resueltos (no preguntes):**
+    - **Horario:** de lunes a domingo.
+    - **Flyer:** cada embudo ya tiene el suyo en su etapa 1.2 (sección 5.4). Para el embudo de prueba se usa el de **Promo Lean**.
+    - **Datos bancarios oficiales:** ya están en la plantilla de la etapa de transferencia (imagen `cuenta-para-transferencia.png`). Se conservan tal cual.
+    - **Plantillas de Meta:** su alta va aparte y **no bloquea el trabajo en el embudo**. Arma las secuencias completas; donde vaya una plantilla que todavía no existe, deja un paso `nota` marcado «PENDIENTE PLANTILLA <nombre>», con el texto. Cuando Meta la apruebe, se cambia por el paso `mensaje` con la plantilla.
 
 ---
 
@@ -88,7 +102,7 @@ Contiene:
 - **Meses sin intereses:** 3, 6, 9 o 12 meses con tarjeta de crédito; hay que tener disponible el total.
 - Los accesos se activan con el primer pago, aunque sea el apartado.
 - Estudiantes: 15% de descuento con credencial o kárdex, **solo si el lead lo menciona**.
-- **Ofertas de $3,799 y $2,799:** existen en el embudo, pero solo se usan si hay autorización (decisión 9).
+- **Ofertas de $3,799 y $2,799:** las puede usar cualquier asesor ante una objeción de precio, después de defender $3,999 con el pago en partes (decisión 9). El bot no las manda.
 
 ---
 
@@ -97,7 +111,8 @@ Contiene:
 | Hallazgo | Dato |
 |---|---|
 | La mitad de los leads es fría | 54% no contestó o solo dio su nombre en 24 h. Dejaron 2 de 37 ventas. |
-| Clasificar a las 24 h, no antes | A las 2 h se irían 9 compradores al trato de fríos; a las 24 h, solo 2. |
+| **Cuándo marcar frío: a las 2 h** | Con el saludo actual, 95% de los que contestan lo hacen en la primera hora y 80% de los compradores en 2 h. Como el frío vuelve a Caliente en cuanto escribe, marcarlo a las 2 h no pierde ventas y deja casi toda la ventana de 24 h para que un asesor lo intente. |
+| **Un asesor sí convierte fríos dentro de la ventana** | Dentro de las 24 h, el mensaje de un asesor a un frío contesta 17% (373 envíos); el del bot, 1% (2,274). Fuera de la ventana, ambos alrededor de 2%. |
 | Señal desde el minuto cero | El 7% que escribe su propio primer mensaje (no el texto del anuncio) hizo 18 de 37 ventas. |
 | **Preguntar el precio no es ser frío** | De los leads que preguntaron el costo, 19% compró (23 de 119), contra 7% del total de calientes. El que «solo quiere el precio» es frío solo si recibe el precio y ya no sigue. |
 | Funciona pedir algo fácil | «¿En qué área trabajas?»: 34% (75% de los calientes). «¿Te muestro las facilidades?»: 28%. Pedir el nombre: 65%, aunque ya no se usa (decisión 3). |
@@ -129,9 +144,9 @@ Detalle completo en `mensajes-16oct-5nov/` y `audios-paso-1.2/`.
 
 - **Leer:** `GET /ajustes/horario-bots`.
 - **Guardar:** `PUT /ajustes/horario-bots`.
-- **Campos:** `{activo, desde, hasta, zona, dias}`.
-- **Hoy:** de 9:00 a 21:00 h, zona America/Monterrey.
-- **Cambio:** pasarlo a **`desde` 07:00 y `hasta` 22:00**, zona America/Monterrey. Los días hay que confirmarlos con el usuario.
+- **Campos:** `{activo, desde, hasta, zona, dias}`. `desde` y `hasta` van en **minutos desde la medianoche**.
+- **Hoy:** `{"activo": true, "desde": 540, "hasta": 1260, "dias": [1,2,3,4,5,6,7], "zona": "America/Monterrey"}`, es decir, de 9:00 a 21:00, de lunes a domingo.
+- **Cambio:** **`desde: 420` (7:00) y `hasta: 1320` (22:00)**. Los días se quedan de lunes a domingo.
 
 El horario aplica a las secuencias con `soloEnHorario: true`. Fuera de horario, esas secuencias esperan a que vuelva a abrir.
 
@@ -319,8 +334,9 @@ Un paso `mensaje` **sin plantilla de Meta** puede llevar botones de respuesta y 
 - **Campos nuevos de este rediseño:** se escriben con `establecer_campo`; verifica que se guarden.
   - `Temperatura`: `Caliente` o `Frío`.
   - `Interés inicial`: `Información` o `Precio`.
-  - `Paso del seguimiento`: contador de rondas.
-  - `Oferta autorizada`: `Sí`, o vacío.
+  - `Paso del seguimiento`: contador de rondas de los calientes.
+  - `Paso del frío`: contador de rondas de los fríos.
+  - `Objeción de precio`: `Sí`, o vacío. Lo pone cualquier asesor cuando el lead objeta el precio; habilita las rondas de oferta.
 
 **Seguimiento de una corrida.** `GET /conversaciones/:id/secuencia` muestra cómo terminó el bot en una conversación. Los motivos posibles:
 
@@ -370,16 +386,18 @@ Lead escribe (cualquier hora)
    │
    ├─ toca «Solo el precio» ──► PRECIO + flyer  [Quiero mi ruta] [Formas de pago]
    │                              ├─ toca o escribe ──► CALIENTE (o 1.4 si eligió formas de pago)
-   │                              └─ no sigue en 24 h ──► FRÍO
+   │                              └─ no sigue en 2 h ──► FRÍO
    │
-   └─ no contesta en 24 h ──► FRÍO
+   └─ no contesta en 2 h ──► FRÍO
 
 CALIENTE ─► el asesor conversa ─► 1.4 FORMAS DE PAGO [Pago en partes] [Meses sin intereses] [Pago completo]
                                     ├─ elige ──► 2 Parcialidades / 2 MSI 3999 / 2 Una sola exhibición ──► 3 medios de pago ──► GANADO
                                     └─ duda o no elige en 3 h ──► 1.3 LLAMADA [Prefiero llamada] [Seguir por aquí]
 CALIENTE sin respuesta 24 h ──► SEGUIMIENTO CALIENTES (5 rondas en ~15 días) ──► PERDIDO
-FRÍO ──► 2 plantillas (días 2–3 y 7) ──► PERDIDO        (si responde en cualquier momento ──► CALIENTE)
-Etapas de $3,799 / $2,799 ──► se quedan, el flujo normal las salta (solo con «Oferta autorizada»)
+FRÍO ──► (opcional) mensaje de un asesor mientras la ventana de 24 h siga abierta
+     ──► bot: 5 plantillas espaciadas (días 3, 7, 15, 30 y 60) ──► PERDIDO
+     (si responde en cualquier momento ──► CALIENTE)
+Etapas de $3,799 / $2,799 ──► se quedan; el flujo normal las salta. Las usa el asesor ante una objeción de precio.
 ```
 
 ### 5.2 La regla de clasificación
@@ -392,8 +410,8 @@ Etapas de $3,799 / $2,799 ──► se quedan, el flujo normal las salta (solo c
 
 **Frío**, cualquiera de estas:
 
-- no contestó nada en 24 h;
-- tocó «Solo el precio» y en 24 h ya no siguió.
+- no contestó nada en 2 h;
+- tocó «Solo el precio» y en 2 h ya no siguió.
 
 **Dónde se guarda:**
 
@@ -405,14 +423,14 @@ Etapas de $3,799 / $2,799 ──► se quedan, el flujo normal las salta (solo c
 
 | | Frío | Caliente |
 |---|---|---|
-| Quién lo lleva | Solo el bot | Un asesor; meta de 5 min o menos dentro del horario |
-| Mensajes | 2 plantillas de Meta como máximo, sin precio | Ruta en PDF y audio corto (otro sistema), formas de pago y llamada como opción |
-| Ofertas | Nunca | Solo con `Oferta autorizada = Sí` |
-| Si se queda callado | Pasa a Perdido | Seguimiento calientes (5 rondas) y luego Perdido |
+| Quién lo lleva | El bot, con seguimiento pausado. Un asesor lo puede intentar mientras la ventana siga abierta. | Un asesor; meta de 5 min o menos dentro del horario |
+| Mensajes | 5 plantillas en unos 60 días, sin precio de oferta | Ruta en PDF y audio corto (otro sistema), formas de pago y llamada como opción |
+| Ofertas | Nunca | Solo ante objeción de precio, y en orden: $3,999 en partes, luego $3,799, luego $2,799 |
+| Si se queda callado | Pasa a Perdido después del día 60 | Seguimiento calientes (5 rondas) y luego Perdido |
 
 ### 5.3 Horario y fuera de horario
 
-- `PUT /ajustes/horario-bots`: de 07:00 a 22:00, America/Monterrey. Los días hay que confirmarlos.
+- `PUT /ajustes/horario-bots`: `desde: 420`, `hasta: 1320`, America/Monterrey, de lunes a domingo.
 - **Todas las etapas con `soloEnHorario: true`, menos «1 Bienvenida».** La bienvenida responde siempre, porque contesta a algo que el lead acaba de escribir o tocar.
 - **Fuera de horario, el lead recibe:**
   - la bienvenida con los botones;
@@ -429,11 +447,14 @@ Etapas de $3,799 / $2,799 ──► se quedan, el flujo normal las salta (solo c
 
 Los textos siguen la guía de tono (5.6). `{programa}` y `{n}` cambian por embudo:
 
-| Embudo | `{programa}` | `{n}` |
-|---|---|---|
-| ISO + Calidad | ISO + Calidad | 9 certificaciones |
-| Manufactura y Calidad | Manufactura y Calidad | 6 certificaciones |
-| Core Tools Premium | Core Tools | 8 certificaciones |
+| Embudo | `{programa}` | `{n}` | Flyer inicial (`archivoId`, hoy en su etapa 1.2) |
+|---|---|---|---|
+| ISO + Calidad | ISO + Calidad | 9 certificaciones | `edffb32e-5824-4a70-aaed-fcbea952ecc1` (lista-de-cursos-iso.png) |
+| Manufactura y Calidad | Manufactura y Calidad | 6 certificaciones | `cbedf527-903f-42c5-87c3-5996237b4ad0` (lista-de-cursos.png) |
+| Core Tools Premium | Core Tools | 8 certificaciones | `4351f867-d473-4da9-9e75-a532d287297b` (lista-de-cursos.png) |
+| **Prueba (Promo Lean)** | Lean Manufacturing + 7 certificaciones | 8 certificaciones | `b766c439-bf59-463d-b6a0-9e57c3a44223` (CRM Promo Lean.png) |
+
+Antes de usar un flyer, verifica el `archivoId` con `GET /archivos/:id/info`.
 
 #### 1 Bienvenida (hoy «1 Saludo»; se puede renombrar)
 
@@ -457,7 +478,7 @@ Los textos siguen la guía de tono (5.6). `{programa}` y `{n}` cambian por embud
    - «Más información» → `info`;
    - «Solo el precio» → `precio`;
    - `otra` → `info`;
-   - `sin` (86,400 s) → `frio`.
+   - `sin` (7,200 s, 2 h) → `frio`.
 2. **`info`:**
    - `establecer_campo Temperatura = Caliente`;
    - `establecer_campo Interés inicial = Información`;
@@ -480,7 +501,7 @@ Los textos siguen la guía de tono (5.6). `{programa}` y `{n}` cambian por embud
    - «Quiero mi ruta» → `rutaPrecio`;
    - «Formas de pago» → `pagoPrecio`;
    - `otra` → `rutaPrecio`;
-   - `sin` (86,400 s) → `frio`.
+   - `sin` (7,200 s, 2 h) → `frio`.
 7. **`rutaPrecio`:**
    - `establecer_campo Temperatura = Caliente`;
    - `ir_a area`.
@@ -517,23 +538,46 @@ Pide al usuario esos textos.
 
 #### Frío (etapa nueva)
 
-**Configuración:** `soloEnHorario: true`.
+**Configuración:** `soloEnHorario: true`. Contador `Paso del frío`, igual que el de calientes.
+
+**Objetivo:** seguimiento pausado del bot. Si cualquier respuesta llega, el lead pasa a Caliente.
 
 **Pasos:**
 
-1. `pausa` de 1 a 2 días, para que el primer envío caiga a los 2 o 3 días de la entrada.
-2. mensaje con la plantilla de Meta **`sys_frio_ruta`** (botones de Meta opcionales: «Sí, me interesa» y «Ahora no»):
+1. **`ventana`:**
+   - `tarea` para el equipo: «Lead frío con la ventana de 24 h abierta: un mensaje corto de asesor puede pasarlo a caliente. Opcional, si hay capacidad». Con `plazoSegundos: 72000`.
+   - **No uses `asignar`**: el frío no debe entrar a la cola normal del asesor. Verifica a quién se le puede asignar la tarea (`asignarA`).
+2. `esperar` 79,200 s (22 h, lo que queda de la ventana). Si responde, salta a `reactivo`.
+3. **Ronda 1, día 3:** plantilla **`sys_frio_ruta`** (botones de Meta: «Sí, me interesa» y «Ahora no»):
    > Hola 👋 ¿Sigues buscando certificarte en {{1}}? Responde «Sí» y un asesor te prepara una ruta según tu área.
-3. `esperar` 4 días. Si responde, salta a `reactivo`.
-4. mensaje con la plantilla **`sys_frio_cierre`**:
-   > Hola. Te dejamos la puerta abierta: cuando quieras retomar tu certificación, escríbenos «Info» y con gusto te ayudamos.
-5. `esperar` 3 días. Si responde, salta a `reactivo`.
-6. `cambiar_etapa → Perdido`, con la razón «No contestó» si la razón se puede poner desde el bot.
-7. **`reactivo`:**
-   - `establecer_campo Temperatura = Caliente`;
-   - `cambiar_etapa → Caliente`.
+4. `esperar` 4 días. Si responde, revisa con `condicion mensaje contiene "Ahora no"` → salta a `pausaLarga`; cualquier otra respuesta → `reactivo`.
+5. **Ronda 2, día 7:** plantilla **`sys_frio_demo`** (botones: «Sí, compártela» y «Ahora no»):
+   > Hola. Si quieres ver cómo son nuestros cursos por dentro, tenemos una clase de muestra gratuita. ¿Te la compartimos?
+6. `esperar` 8 días. Las respuestas se tratan igual que en el paso 4.
+7. **Ronda 3, día 15:** plantilla **`sys_frio_dc3`**:
+   > Hola. Cada uno de nuestros cursos incluye su constancia DC-3 avalada por la STPS, sin costo extra. ¿Te gustaría que un asesor te cuente cómo funciona?
+8. `esperar` 15 días. Las respuestas se tratan igual que en el paso 4.
+9. **Ronda 4, día 30:** plantilla **`sys_frio_quincenas`**:
+   > Hola. Puedes empezar tu certificación con un apartado y pagar el resto en tus próximas quincenas. ¿Quieres que un asesor te explique cómo?
+10. `esperar` 30 días. Las respuestas se tratan igual que en el paso 4.
+11. **Ronda 5, día 60 (`cierre`):** plantilla **`sys_frio_cierre`**:
+    > Hola. Te dejamos la puerta abierta: cuando quieras retomar tu certificación, escríbenos «Info» y con gusto te ayudamos.
+12. `esperar` 7 días. Si responde, salta a `reactivo`. Si no, `cambiar_etapa → Perdido`, con la razón «No contestó» si se puede poner desde el bot.
+13. **`pausaLarga`** (tocó «Ahora no»):
+    - `pausa` de 30 días;
+    - `ir_a cierre`. Solo recibe el mensaje de despedida.
+14. **`reactivo`:**
+    - `establecer_campo Temperatura = Caliente`;
+    - `cambiar_etapa → Caliente`.
 
-**Sin precio, sin ofertas y sin más de dos plantillas.** Mientras las plantillas no estén aprobadas, Frío solo marca el campo y pasa a Perdido a los 7 días.
+**Sin precio de oferta y una plantilla por ronda.** Mientras una plantilla no esté aprobada, deja su paso como `nota` «PENDIENTE PLANTILLA» (decisión 12). La estructura y los tiempos quedan listos.
+
+**Mensaje del asesor dentro de la ventana** (texto libre, opcional):
+
+- **No contestó la bienvenida:**
+  > Hola, soy {asesor}, de Desarrollo Profesional SyS 😊 Vi que te interesó {programa}. ¿Te comparto la información o tienes alguna pregunta en particular?
+- **Solo pidió el precio:**
+  > Hola, soy {asesor}, de Desarrollo Profesional SyS 😊 Además del precio, puedo prepararte una ruta según tu área. ¿En qué área trabajas o qué estudias?
 
 #### 1.1 Informes y 1.2 Lista de cursos
 
@@ -652,9 +696,11 @@ Las fechas exactas las manda el asesor con la calculadora de `plantillas-asesore
   - `detener`.
 - **Botones de la ronda 2:** si el lead toca «Formas de pago», mover a 1.4 (patrón actual: `condicion mensaje contiene "Formas de pago"`).
 - **Ofertas que se quedan pero se saltan (decisión 9):**
-  - Las rondas de oferta actuales (oferta relámpago de $3,799, cierre de $2,799 y «la cerramos hoy») se conservan al final de la secuencia, sin borrarse.
-  - Antes de ellas va `condicion Oferta autorizada igual "Sí"`. Si no se cumple, se saltan y se pasa a Perdido.
-  - El campo lo pone el asesor o Dirección solo cuando haya una oferta autorizada.
+  - Las rondas de oferta actuales se conservan al final de la secuencia, sin borrarse: oferta relámpago de $3,799, cierre de $2,799 y «la cerramos hoy».
+  - Antes de ellas va `condicion Objeción de precio igual "Sí"`. Si no se cumple, se saltan y se pasa a Perdido.
+  - Cualquier asesor marca el campo cuando el lead objeta el precio y ya defendió $3,999 con el pago en partes.
+  - Respeta el orden: primero $3,799 y, solo si sigue la objeción, $2,799.
+  - Pásalas por la guía de tono: quita «Inge», las mayúsculas y la escasez falsa («quedan 4 lugares», «la cerramos hoy»). Conserva el precio.
 - **Salen del flujo normal:**
   - la clase demo como seguimiento (el asesor la manda si el lead la pide);
   - las 4 plantillas de las 64 certificaciones;
@@ -663,14 +709,15 @@ Las fechas exactas las manda el asesor con la calculadora de `plantillas-asesore
 #### Etapas de MSI 2799 / 2. MSI 2799
 
 - **No se borran ni se apagan** (decisión 9).
-- Ningún paso automático lleva a ellas: solo el asesor las usa con una oferta autorizada.
+- Ningún paso automático lleva a ellas: solo el asesor mueve al lead ahí, como último recurso ante una objeción de precio.
 - Revisar que sus textos sigan la guía de tono.
 
 #### Otras etapas
 
 | Etapa | Qué hacer |
 |---|---|
-| STBY clientes con interés (Core Tools) | Su tarea propone una oferta de $1,500. Decide Dirección; mientras, no tocarla. |
+| 3. Transferencias / PayPal / Débito de **Manufactura** | Hoy las tres mandan la imagen `ultima-oportunidad.png` con «Inge solamente nos quedan 4 lugares para la promoción…» dentro del flujo de pago. Sácala del flujo normal: déjala detrás de `condicion Objeción de precio igual "Sí"` y quítale «Inge» y la escasez. |
+| STBY clientes con interés (Core Tools) | Su tarea propone una oferta de $1,500, que no está entre los precios de la decisión 9. No la toques y avísale al usuario. |
 | Ganado | Conservar. Pasar el texto por la guía de tono y agregar: «Recuerda que tu DC-3 y tu diploma ya vienen incluidos en tu membresía». |
 | Perdido | Sin bot. |
 
@@ -678,7 +725,7 @@ Las fechas exactas las manda el asesor con la calculadora de `plantillas-asesore
 
 1. Ningún mensaje fuera de 7:00 a 22:00 h, salvo la respuesta inmediata de la bienvenida.
 2. Como máximo **un mensaje automático por día** por lead, sin contar la información que pidió con un botón.
-3. **Fríos:** 2 plantillas en total. **Calientes en seguimiento:** 5 rondas en unos 15 días.
+3. **Fríos:** 5 plantillas en unos 60 días; si tocan «Ahora no», solo la despedida 30 días después. **Calientes en seguimiento:** 5 rondas en unos 15 días.
 4. Si el lead escribe, el bot se detiene y lo atiende una persona.
 5. Si el lead dice que no le interesa: `asignar`, el asesor cierra con amabilidad y pasa a Perdido. No sale ningún mensaje automático más.
 
@@ -704,11 +751,11 @@ Las fechas exactas las manda el asesor con la calculadora de `plantillas-asesore
 | Excelente {{nombre}} que gustazo! … Te explico rapidito… | Con gusto. *{programa}* incluye *{n}*… |
 | Que onda {{nombre}}, recuerda que esta membresía incluye las demás rutas🦾 | Con la membresía tienes acceso a los 64 cursos durante 12 meses. |
 | Igual si gustas {{nombre}} te puedo hacer una llamadita… | Si te ayuda, un asesor puede resolver tus dudas en una llamada breve, o seguimos por aquí. ¿Qué prefieres? |
-| ¡Tenemos una OFERTA RELÁMPAGO disponible solo por hoy! ⚡ | (Fuera del flujo normal; solo con oferta autorizada.) |
+| ¡Tenemos una OFERTA RELÁMPAGO disponible solo por hoy! ⚡ | (Fuera del flujo normal. Ante una objeción de precio: «Entiendo. Si el precio es lo que te detiene, puedo ofrecerte la membresía en $3,799. ¿Te comparto cómo quedaría?») |
 
 ### 5.7 Plantillas de Meta que hay que crear
 
-Se dan de alta y se aprueban en Meta antes de usarlas en el bot. Confírmalas con `GET /whatsapp/plantillas-meta`.
+Su alta en Meta va aparte y no bloquea el embudo (decisión 12). Mientras no estén aprobadas, su paso queda como `nota` «PENDIENTE PLANTILLA». Ya aprobadas, se confirman con `GET /whatsapp/plantillas-meta`.
 
 **Variables.** En Meta son `{{1}}`, `{{2}}`. Las del bot no llevan el nombre; `{{1}}` es el tema del embudo. Revisa cómo el CRM llena las variables de una plantilla actual, como `i_c_negativo_2_64_cert_63kkgk`.
 
@@ -716,8 +763,11 @@ Se dan de alta y se aprueban en Meta antes de usarlas en el bot. Confírmalas co
 
 | Nombre sugerido | Categoría | Quién la manda |
 |---|---|---|
-| `sys_frio_ruta` | Marketing | Bot, etapa Frío |
-| `sys_frio_cierre` | Marketing | Bot, etapa Frío |
+| `sys_frio_ruta` | Marketing | Bot, Frío, día 3 |
+| `sys_frio_demo` | Marketing | Bot, Frío, día 7 |
+| `sys_frio_dc3` | Marketing | Bot, Frío, día 15 |
+| `sys_frio_quincenas` | Marketing | Bot, Frío, día 30 |
+| `sys_frio_cierre` | Marketing | Bot, Frío, día 60 |
 | `sys_seguimiento_ruta` | Marketing | Bot, Seguimiento calientes, ronda 1 |
 | `sys_reactivacion_ruta` | Marketing | Bot, ronda 2 |
 | `sys_apartado_quincenas` | Marketing | Bot, ronda 3 |
@@ -741,12 +791,12 @@ Los tres embudos tienen la misma estructura. Cambia el número de certificacione
 | 1 Saludo | Firma «Salma Pérez», dice «Inge», pide el nombre y espera 30 min. Si no contesta, pone `nombre = "Inge"`. | Pasa a ser 1 Bienvenida, con botones. |
 | 1.1 Informes | «Te explico rapidito… son 9 certificaciones…» | Se apaga; el contenido va a la bienvenida. |
 | 1.2 Lista de cursos | Archivo, link de la ruta, cómo funciona y «¿en qué área trabajas?». A las 2 h lo pasa a Negativo aunque haya contestado. | Se apaga; la pregunta del área va en la bienvenida. |
-| 1 Negativo (40 pasos) | 4 rondas: pregunta corta, clase demo, 64 certificaciones y oferta de $3,799, CV y $2,799. Luego Perdido. | Pasa a ser Seguimiento calientes; las ofertas se quedan detrás de `Oferta autorizada`. |
+| 1 Negativo (40 pasos) | 4 rondas: pregunta corta, clase demo, 64 certificaciones y oferta de $3,799, CV y $2,799. Luego Perdido. | Pasa a ser Seguimiento calientes; las ofertas se quedan detrás de `Objeción de precio`. |
 | 1.3 Llamadita | Llamada a los 5 min y facilidades a los 10 min. A las 4 h, Negativo. | Pasa a ser 1.3 Llamada, ofrecida en el momento de decidir. |
 | 1.4 Facilidades | Tres opciones y «¿Cuál te interesa?». A las 4 h, Negativo. | Botones a las etapas de pago, con 45 días en quincenas. |
 | 2 Parcialidades | Desglose y medios de pago. A las 4 h, Negativo. | Botones a los medios de pago, con 45 días en quincenas. |
-| MSI 2799 | Meses sin intereses a $2,799. | Se queda; el flujo normal la salta. |
-| STBY (Core Tools) | Tarea con oferta de $1,500. | Decide Dirección. |
+| MSI 2799 | Meses sin intereses a $2,799. | Se queda; el flujo normal la salta y el asesor la usa como último recurso. |
+| STBY (Core Tools) | Tarea con oferta de $1,500. | No se toca; se avisa al usuario. |
 | Ganado | Bienvenida y accesos. | Se queda, con ajuste de tono. |
 
 ---
@@ -755,10 +805,14 @@ Los tres embudos tienen la misma estructura. Cambia el número de certificacione
 
 Cada fase necesita la aprobación del usuario antes de guardar.
 
-1. **Fase 0. Respaldo e inventario.**
-   - `GET` de la secuencia y los disparadores de todas las etapas de los tres embudos. Guardarlos en `rediseno-bot/respaldo/<embudo>/<etapa>.json` (sin datos de leads).
+1. **Fase 0. Respaldo, permisos y embudo de prueba.**
+   - `GET` de la secuencia y los disparadores de todas las etapas de los tres embudos y de Promo Lean. Guardarlos en `rediseno-bot/respaldo/<embudo>/<etapa>.json` (sin datos de leads).
    - `GET /ajustes/horario-bots` y `GET /whatsapp/plantillas-meta`.
    - Verificar si existe una condición de hora para el aviso fuera de horario.
+   - **Permisos:** la cuenta usada hasta ahora (`GET /auth/yo`) es de rol `vendedor` (auxiliar) y puede no tener permiso para editar embudos ni bots. Pregúntale al usuario con qué cuenta trabajar.
+   - **Embudo de prueba:** duplica **Promo Lean** (`POST /embudos/a549ed15-1909-4a25-81b7-3a2ceca051ff/duplicar`) y usa su flyer.
+     - Antes de activar sus bots, confirma que ninguna ruta de entrada ni campaña apunte a la copia (`GET /rutas-entrada`), para que no le lleguen leads reales.
+     - Prueba moviendo a esa copia una conversación de un número de prueba.
 2. **Fase 1. Horario y tono.**
    - Horario de los bots de 7:00 a 22:00 h.
    - `soloEnHorario: true` en todas las etapas salvo la bienvenida.
@@ -772,9 +826,11 @@ Cada fase necesita la aprobación del usuario antes de guardar.
    - Botones de 1.4 y 2 Parcialidades.
    - 1.3 Llamada reubicada y reordenada.
 5. **Fase 4. Seguimiento.**
-   - Negativo pasa a Seguimiento calientes, con las ofertas detrás de `Oferta autorizada`.
-   - Plantillas de Frío y de seguimiento cuando Meta las apruebe.
-6. **Fuera del CRM:** el módulo de ruta en PDF y audio corto en el sistema de ventas. Se trabaja aparte.
+   - Negativo pasa a Seguimiento calientes, con las ofertas detrás de `Objeción de precio`.
+   - Etapa Frío completa, con sus 5 rondas.
+   - Las plantillas que falten quedan como `nota` «PENDIENTE PLANTILLA» hasta que Meta las apruebe.
+6. **Después de probar en la copia de Promo Lean,** se repite en ISO + Calidad, Manufactura y Calidad y Core Tools Premium, con la aprobación del usuario para cada embudo.
+7. **Fuera del CRM:** el módulo de ruta en PDF y audio corto en el sistema de ventas. Se trabaja aparte.
 
 ### Pruebas (en un embudo duplicado o con un número de prueba)
 
@@ -783,14 +839,16 @@ Cada fase necesita la aprobación del usuario antes de guardar.
 | Escribe a las 23:00 | Recibe la bienvenida con el horario (y la información si toca el botón). Nada más hasta las 7:00. |
 | Toca «Más información» | Recibe la información, el flyer y la pregunta del área; pasa a Caliente con tarea para el asesor. |
 | Escribe en lugar de tocar un botón | Igual que el caso anterior: Caliente. |
-| Toca «Solo el precio» y no sigue | A las 24 h pasa a Frío con `Interés inicial = Precio`. |
+| Toca «Solo el precio» y no sigue | A las 2 h pasa a Frío con `Interés inicial = Precio`. |
 | Toca «Solo el precio» y luego «Formas de pago» | Pasa a Caliente y a 1.4. |
-| No contesta nada | A las 24 h pasa a Frío; recibe 2 plantillas en horario y pasa a Perdido. |
-| Frío que responde | Pasa a Caliente y se asigna. |
+| No contesta nada | A las 2 h pasa a Frío y aparece la tarea opcional del asesor. Después recibe las rondas de los días 3, 7, 15, 30 y 60, en horario, y pasa a Perdido. |
+| Frío que contesta al mensaje del asesor dentro de la ventana | Pasa a Caliente y se asigna. |
+| Frío que toca «Ahora no» | Solo recibe la despedida 30 días después. |
+| Frío que responde a cualquier ronda | Pasa a Caliente y se asigna. |
 | En 1.4 no elige en 3 h | Pasa a 1.3 Llamada con los dos botones. |
 | Toca «Prefiero llamada» | Se asigna, queda la tarea de llamar y se guarda `Proxima cita`. |
 | Caliente sin respuesta 24 h | Seguimiento calientes; las rondas salen en horario, una por día como máximo. |
-| `Oferta autorizada` vacía | Las rondas de oferta se saltan. |
+| `Objeción de precio` vacía | Las rondas de oferta se saltan. Con `Sí`, salen en orden ($3,799 y luego $2,799). |
 | Envío fuera de 24 h sin plantilla | Si aparece `ventana_cerrada` en la corrida, corregir el paso. |
 
 Revisa cada corrida con `GET /conversaciones/:id/secuencia` y los movimientos con `GET /conversaciones/:id/movimientos`.
@@ -801,16 +859,15 @@ Revisa cada corrida con `GET /conversaciones/:id/secuencia` y los movimientos co
 
 ## 8. Pendientes por confirmar con el usuario
 
-1. Los **días** del horario de 7:00 a 22:00 h. ¿Todos los días?
-2. El **flyer inicial** de cada embudo: el archivo que se usará como `archivoId`.
-3. Si el motor no detecta fuera de horario, ¿se deja la línea de horario fija en la bienvenida o se le pide la condición al desarrollador?
+Lo que ya está resuelto no se pregunta (decisión 12): días del horario, flyer, quién usa las ofertas, datos bancarios y plantillas de Meta.
+
+1. Con qué cuenta trabajar. La de solo lectura es de rol `vendedor` y quizá no pueda editar bots.
+2. Si el motor no detecta fuera de horario, ¿se deja la línea de horario fija en la bienvenida o se le pide la condición al desarrollador?
+3. A quién se le asigna la tarea opcional de los fríos (`asignarA`): un asesor, un auxiliar o el equipo.
 4. Los textos automáticos de los anuncios, para el caliente desde el minuto cero (opcional).
-5. Quién puede poner `Oferta autorizada = Sí` y en qué casos.
-6. La regla de fechas de los abonos (las dos últimas quincenas dentro de los 45 días).
-7. Los datos bancarios oficiales y la regla de factura.
-8. La tarea de STBY con la oferta de $1,500.
-9. El alta de las plantillas de Meta: nombres, categoría y aprobación.
-10. Renombrar etapas (1 Saludo, 1 Negativo, 1.3) o crear nuevas. Renombrar conserva el historial.
+5. La regla de fechas de los abonos (las dos últimas quincenas dentro de los 45 días).
+6. La tarea de STBY de Core Tools con la oferta de $1,500.
+7. Renombrar etapas (1 Saludo, 1 Negativo, 1.3) o crear nuevas. Renombrar conserva el historial.
 
 ---
 
@@ -822,8 +879,10 @@ Usar la misma metodología de `mensajes-16oct-5nov/` sobre una tercera muestra y
 - % de calientes y fríos, y ventas de cada grupo, también por `Interés inicial`;
 - respuesta a la pregunta del área y a cada ronda de seguimiento;
 - llamadas pedidas con «Prefiero llamada» y cuántas terminan en venta;
+- **precio promedio por venta** y % de ventas a $3,999, $3,799 y $2,799. La meta es vender más y a mayor precio;
+- fríos que pasan a Caliente: con el mensaje del asesor dentro de la ventana y con cada ronda del bot;
 - mensajes enviados fuera de 7:00 a 22:00 h (debe ser 0, salvo la bienvenida);
-- plantillas de Meta enviadas a fríos (antes: 1,588 envíos de ofertas a fríos en el periodo);
+- plantillas de Meta enviadas a fríos y su costo (antes: 1,588 envíos de ofertas a fríos en el periodo);
 - tiempo de respuesta de los asesores a los calientes (meta: 5 min o menos dentro del horario);
 - leads calientes que el bot movió por error a seguimiento (debe ser 0).
 
