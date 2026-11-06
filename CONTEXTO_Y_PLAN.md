@@ -61,28 +61,37 @@ Todo se hizo leyendo el CRM en modo solo lectura, sin mover nada del proceso.
 
 ## 3. Lo que sigue
 
+El detalle técnico para hacerlo dentro del CRM está en `CLAUDE.md`.
+
 ### 3.1 Rediseñar el bot con dos clases de lead
 
-- **Cuándo se clasifica.** A las **24 h** el lead queda como **frío** (no contestó o solo dio su nombre) o **caliente** (siguió escribiendo).
-- **Excepción.** Quien escribe su propia pregunta al entrar es caliente desde el primer minuto.
-- **Fríos.** El bot los lleva con **dos plantillas como máximo y sin precio**. Esto libera cerca de la mitad de la carga de los asesores.
-- **Calientes.** Pasan a una persona, que responde en **5 minutos o menos**.
+- **Horario de atención: de 7:00 a 22:00 h.** Fuera de ese horario no sale ningún mensaje del CRM. La única excepción es la respuesta inmediata a quien escribe de noche: recibe la información básica y el aviso del horario.
+- **El bot se presenta como «el asistente de Desarrollo Profesional SyS».** No usa el nombre de una persona, para distinguirse del asesor.
+- **No se pide el nombre para dar la información.** La bienvenida trae los botones «Más información» y «Solo el precio». Con el primero, el bot manda los beneficios, el costo y el flyer inicial.
+- **Dos clasificaciones dentro de cada embudo: Caliente y Frío.**
+  - **Caliente:** toca «Más información», escribe algo o sigue después del precio. Lo atiende un asesor.
+  - **Frío:** no contesta en 24 h, o recibe el precio y ya no sigue. Recibe 2 plantillas como máximo, sin precio, y pasa a Perdido.
+  - Preguntar el precio no hace frío a nadie: de quienes preguntaron el costo, 19% compró.
+- **Toda rama de botones trata el texto libre igual que el botón positivo.** Los botones casi no se pulsan; el lead suele contestar con sus propias palabras.
 
-### 3.2 Ajustar los toques del bot
+### 3.2 Simplificar los pasos del embudo
 
-| Conservar | Quitar |
+| Etapa | Cambio |
 |---|---|
-| Pedir el nombre | Oferta relámpago ($3,799) |
-| Preguntar el área | Cierre de promoción a $2,799 |
-| «¿Tuviste oportunidad de revisar la info?» | «La cerramos hoy» |
-| Preguntas de facilidades de pago | CV y perfil profesional |
-| Pasos de pago y bienvenida | Las 64 certificaciones en tres mensajes seguidos |
+| 1 Saludo | Pasa a ser Bienvenida con botones, sin «Inge» ni la firma de una persona. |
+| 1.1 y 1.2 | Su contenido pasa a la bienvenida. Las etapas se quedan, con el bot apagado. |
+| 1.4 Facilidades | Botones a cada forma de pago, con 45 días en quincenas. |
+| 1.3 Llamada | Ya no sale sola a media conversación. Se ofrece cuando el lead duda o está por decidir, junto con seguir por chat. Puede ser el cierre de la venta. |
+| 1 Negativo | Pasa a ser Seguimiento calientes: 5 plantillas en unos 15 días, sin ofertas ni urgencia. |
+| Ofertas de $3,799 y $2,799 | No se borran. Se quedan en el embudo y el flujo normal se las salta. Solo se usan con oferta autorizada. |
 
-### 3.3 Activar la ruta personalizada
+Todos los textos van con un solo tono: trato de tú, neutral, sin modismos ni rigidez, una pregunta y un emoji como máximo.
 
-1. Se manda un **documento** con el nombre, la ocupación y la ruta del lead. Reemplaza el audio de unos 2 minutos y los links sueltos.
-2. El asesor manda un **audio de 45 s o menos**, solo para convencer.
-3. Cierra con **«¿Qué te parece tu ruta?»**.
+### 3.3 Ruta en PDF y audio corto
+
+- Reemplazan el audio de 2 minutos y los links de las rutas.
+- Los manda el asesor, sin guion.
+- El módulo vive en el sistema de ventas y se trabaja aparte.
 
 ### 3.4 Homologar al equipo con el libro de plantillas
 
@@ -97,6 +106,7 @@ Aplica a todos los asesores y auxiliares:
 - Sin urgencia falsa.
 - Textos neutros, que sirvan igual para asesoras y asesores.
 - **Seguimiento el mismo día**, de 2 a 4 h después de que el lead deja de contestar.
+- **Solo de 7:00 a 22:00 h.** El asesor se presenta con su nombre para distinguirse del bot.
 
 ### 3.5 Dar de alta en Meta las plantillas para fuera de las 24 h
 
