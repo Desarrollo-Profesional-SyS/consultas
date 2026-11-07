@@ -130,14 +130,20 @@ B += [banner('EJE CURSOS  /  EXTRACTO PARA DIRECCIÓN'), espacio(100),
       salto()]
 # Hoja 2
 B += [ceja('02 · LA RECOMENDACIÓN ACTUAL', 0), encabezado('Qué pasa en los 7 días después del audio'),
-      texto('Seguimos 7 días a los 440 leads que recibieron el audio y los links con tiempo suficiente para ver qué hicieron después.', 70, 18),
+      texto('La recomendación de hoy: el mensaje «Te mando un audio rapidito…», un audio de casi 2 minutos, 2 links de cursos y la pregunta «¿Cómo ves la propuesta?». Seguimos 7 días a los 440 leads que la recibieron con tiempo suficiente para ver qué hicieron después.', 70, 18),
       tabla([4682, 1300, 1400, 1700, 1200], ['Qué hizo el lead', '5 al 15 oct', '16 oct al 5 nov', 'Las dos', 'Ventas'], [
           ['**Contestó a la recomendación** (audio y links)', '21%', '21%', '93 · 21%', '7'],
-          ['Contestó, pero a las facilidades de pago que manda el bot enseguida', '31%', '30%', '134 · 30%', '9'],
+          ['Contestó, pero hasta el mensaje de facilidades de pago que el bot manda minutos después', '31%', '30%', '134 · 30%', '9'],
           ['Contestó más adelante, con un seguimiento (10 h después)', '9%', '9%', '40 · 9%', '4'],
           ['Contestó hasta que le llegó una oferta (2.6 días después)', '5%', '6%', '24 · 5%', '3'],
           ['**No volvió a escribir en 7 días**', '34%', '33%', '**149 · 34%**', '**0**'],
       ], ['left', 'center', 'center', 'center', 'center'], total=['Total', '215', '225', '440', '23']),
+      espacio(40),
+      recuadro('CÓMO SE LEE LA TABLA', [
+          '**Contestó a la recomendación:** escribió en las 2 h siguientes al audio, antes de que llegara cualquier mensaje automático.',
+          '**Facilidades de pago:** al pasar al lead a 1.3, el bot le manda solo, a los pocos minutos, las formas de pago y la «llamadita». Ese lead contestó a ese mensaje, no al audio.',
+          '**Seguimiento u oferta:** contestó horas o días después a un mensaje del Negativo o del equipo; cuenta como «oferta» si ese mensaje traía precio ($3,799 o $2,799).',
+          '**No volvió a escribir:** ningún mensaje en los 7 días siguientes al audio. **Ventas:** hasta el corte de cada medición (15 de octubre y 5 de noviembre).']),
       espacio(30),
       vineta('**El audio informa, no persuade.** Dura 1 min 42 s (el 62% pasa de minuto y medio) y explica lo mismo a todos. Los 2 links son páginas de cursos sueltas, sin su nombre ni su ruta.'),
       vineta('**Se cierra con descuento.** El 97% recibió una oferta en los 7 días siguientes al audio, incluso el 99% de los que ya no contestaron. 18 de las 23 ventas fueron con descuento.'),
@@ -150,11 +156,7 @@ B += [ceja('02 · LA RECOMENDACIÓN ACTUAL', 0), encabezado('Qué pasa en los 7 
           ['**Ofertas**', 'Por tiempo, a casi todos (97%)', 'Solo cuando hay señal de compra'],
           ['**Qué se mide**', '21% contesta a la recomendación; 34% no vuelve', 'Subir la respuesta y bajar el silencio'],
       ], ['left', 'left', 'left']),
-      espacio(60),
-      recuadro('LO QUE ESTÁ EN JUEGO', [
-          'Escenario ilustrativo, no medición: hoy salen unas **520 recomendaciones al mes** en estos tres embudos. Por cada 10 puntos que baje el silencio después del audio (hoy 34%), unos 52 leads más seguirían conversando. Con la conversión de quienes sí contestan (7.9%), serían **cerca de 4 ventas y unos $13,000 más al mes**.',
-          '**Siguiente paso:** activar el filtro, la ruta en PDF y el audio corto en Promo Lean desde el 9 de noviembre, con Joceline Benavides como responsable, y medir con estas mismas reglas.']),
-      nota('Definiciones: «contestó a la recomendación» = escribió en las 2 h siguientes al audio, antes de cualquier mensaje automático; «no volvió a escribir» = sin mensajes en los 7 días siguientes. Precio promedio usado: $3,235 (50 ventas de las dos mediciones). Fuente: CRM de SyS en solo lectura.', 0, 60)]
+      nota('Fuente: CRM de SyS en solo lectura. Leads de ISO + Calidad, Manufactura y Calidad y Core Tools Premium.', 0, 60)]
 
 # ----------------------------------------------------------------- armado
 if os.path.exists(TMP): shutil.rmtree(TMP)

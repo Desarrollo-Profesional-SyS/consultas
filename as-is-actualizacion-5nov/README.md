@@ -29,7 +29,7 @@ De los 440 que recibieron el audio con 7 días de seguimiento:
 | Contestó hasta que le llegó una oferta | 5% | 3 |
 | No volvió a escribir | 34% | 0 |
 
-El extracto también compara la recomendación actual con la ruta en PDF y el audio corto, y calcula un escenario ilustrativo. `scripts/recomendacion.py` hace la clasificación y `scripts/extracto.py` arma el documento.
+El extracto también compara la recomendación actual con la ruta en PDF y el audio corto, y explica cómo leer cada renglón de la tabla. `scripts/recomendacion.py` hace la clasificación y `scripts/extracto.py` arma el documento.
 
 ## Libro de Excel
 
