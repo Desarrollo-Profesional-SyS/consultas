@@ -15,6 +15,22 @@
 
 `scripts/reporte.py` lo arma a partir de la propuesta anterior descomprimida.
 
+## Extracto para Dirección · la recomendación actual
+
+`Extracto_Direccion_Recomendacion.docx` (y su PDF) mide, en 2 hojas, qué logra hoy la recomendación (audio de casi 2 minutos y 2 links de cursos) en las dos muestras. De 1,720 leads, 598 (35%) dijeron a qué se dedican.
+
+De los 440 que recibieron el audio con 7 días de seguimiento:
+
+| Qué hizo el lead | Leads | Ventas |
+|---|---|---|
+| Contestó a la recomendación | 21% | 7 |
+| Contestó a las facilidades de pago que el bot manda enseguida | 30% | 9 |
+| Contestó más adelante con un seguimiento | 9% | 4 |
+| Contestó hasta que le llegó una oferta | 5% | 3 |
+| No volvió a escribir | 34% | 0 |
+
+El extracto también compara la recomendación actual con la ruta en PDF y el audio corto, y calcula un escenario ilustrativo. `scripts/recomendacion.py` hace la clasificación y `scripts/extracto.py` arma el documento.
+
 ## Libro de Excel
 
 | Hoja | Contenido |
