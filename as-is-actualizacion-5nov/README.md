@@ -29,6 +29,8 @@ De los 440 que recibieron el audio con 7 días de seguimiento:
 | Contestó hasta que le llegó una oferta | 5% | 3 |
 | No volvió a escribir | 34% | 0 |
 
+Además, el 69% de los leads contesta en las primeras 2 horas desde que llega (la mitad, en menos de 30 segundos). Solo el 5% contesta después y el 26% ya no vuelve a escribir. El cálculo está en `scripts/respuesta_2h.py` y el dato también aparece en el libro de Excel.
+
 El extracto también compara la recomendación actual con la ruta en PDF y el audio corto, y explica cómo leer cada renglón de la tabla. `scripts/recomendacion.py` hace la clasificación y `scripts/extracto.py` arma el documento.
 
 ## Libro de Excel
